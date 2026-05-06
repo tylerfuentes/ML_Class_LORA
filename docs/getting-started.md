@@ -12,7 +12,7 @@ The project uses:
 
 Before you can log into the DGX, you need your own SSH keypair on your own laptop or desktop.
 
-Do not send anyone your private key.
+Do not send anyone your private key.  Put it in your .env or a safe place. 
 
 ## Step 1: Generate an SSH key on your machine
 
