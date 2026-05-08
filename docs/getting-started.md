@@ -100,12 +100,12 @@ Then open a pull request or coordinate with the team on how changes are merged.
 Once your public key is installed on the DGX, you will receive:
 
 - confirmation that your Cornell NetID is your Linux username
-- the DGX hostname or public IP
+- the relay host and port
 
 Then your SSH command will look like:
 
 ```bash
-ssh <your-netid>@<dgx-host-or-ip>
+ssh -p 57325 <your-netid>@129.158.50.228
 ```
 
 ## Step 4: Test SSH access
@@ -113,7 +113,7 @@ ssh <your-netid>@<dgx-host-or-ip>
 After your account is provisioned, test login from a terminal.
 
 ```bash
-ssh <your-netid>@<dgx-host-or-ip>
+ssh -p 57325 <your-netid>@129.158.50.228
 ```
 
 If this works, your machine is ready for VS Code Remote SSH.
@@ -133,10 +133,20 @@ Then:
 4. Enter:
 
 ```text
-<your-netid>@<dgx-host-or-ip>
+ssh -p 57325 <your-netid>@129.158.50.228
 ```
 
 5. Open the project directory on the DGX after login.
+
+If you prefer editing your SSH config directly, add:
+
+```sshconfig
+Host dgx-class
+    HostName 129.158.50.228
+    Port 57325
+    User <your-netid>
+    IdentityFile ~/.ssh/id_ed25519
+```
 
 ## GitHub workflow
 

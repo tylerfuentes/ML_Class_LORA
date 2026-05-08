@@ -1,0 +1,14 @@
+[Unit]
+Description=DGX reverse SSH tunnel to OCI relay
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/ssh -i /root/.ssh/dgx_oci_relay_ed25519 -N -o ServerAliveInterval=30 -o ServerAliveCountMax=3 -o ExitOnForwardFailure=yes -o StrictHostKeyChecking=accept-new -R 0.0.0.0:57325:localhost:22 dgxrelay@129.158.50.228
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

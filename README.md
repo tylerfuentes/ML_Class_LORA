@@ -50,6 +50,10 @@ The next infrastructure step is collecting one public SSH key from each teammate
 
 This repo is set up for separate Linux accounts per teammate rather than a shared login. That keeps access cleaner and works well with VS Code Remote SSH.
 
+Current relay endpoint for teammate access:
+
+- `129.158.50.228:57325`
+
 Provisioning details live in:
 
 - `docs/getting-started.md`

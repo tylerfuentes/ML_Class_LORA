@@ -52,14 +52,31 @@ The script:
 
 Give each teammate:
 
-- server host or public IP
+- relay host: `129.158.50.228`
+- relay port: `57325`
 - their Linux username
 
 Their VS Code Remote SSH target will look like:
 
 ```bash
-ssh <username>@<server-host-or-ip>
+ssh -p 57325 <username>@129.158.50.228
 ```
+
+You can also send this SSH config block:
+
+```sshconfig
+Host dgx-class
+    HostName 129.158.50.228
+    Port 57325
+    User <username>
+    IdentityFile ~/.ssh/id_ed25519
+```
+
+## Relay notes
+
+- Teammates do not get OCI shell access.
+- The relay port terminates on the DGX SSH daemon through a reverse tunnel.
+- Keep teammate accounts out of `sudo` and `docker`.
 
 ## Notes
 
