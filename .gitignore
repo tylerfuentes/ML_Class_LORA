@@ -1,1 +1,16 @@
 .env
+.venv/
+outputs/
+checkpoints/
+runs/
+wandb/
+.cache/
+logs/
+**/__pycache__/
+*.pyc
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.gguf
+*.log
