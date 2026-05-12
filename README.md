@@ -19,6 +19,7 @@ We are running the project on a dedicated NVIDIA DGX Spark, which keeps the work
 - Tyler Fuentes
 - Richie Gray
 - Om Patel
+- Nathanael Gill
 
 Suggested Linux usernames for DGX access:
 
