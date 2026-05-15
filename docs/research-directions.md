@@ -2,6 +2,10 @@
 
 This document records the research-backed direction for the first finance QLoRA baseline and the likely next-stage RL/reasoning work.
 
+Central source index:
+
+- `docs/sources.md`
+
 ## 1. Reasoning-aware finance supervision
 
 One useful source for reasoning-aware finance annotations is:
@@ -69,3 +73,14 @@ For this repository, the practical plan is:
 - Use SenseAI-style reasoning quality as inspiration for annotation format.
 - Use WRDS data as the factual grounding layer.
 - Only consider GRPO-style post-training after the supervised adapter trains, saves, and reloads cleanly.
+
+## Citation standard for this repo
+
+When adding new research-heavy docs, prefer:
+
+- paper title
+- author or short author list
+- year
+- direct arXiv or official source link
+
+That keeps the class-project writeup auditable and makes it easier to defend design choices in presentation or grading.

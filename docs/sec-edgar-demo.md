@@ -23,6 +23,7 @@ Official references:
 
 - https://www.sec.gov/about/developer-resources
 - https://www.sec.gov/search-filings/edgar-application-programming-interfaces
+- `docs/sources.md`
 
 ## Example
 
@@ -55,3 +56,7 @@ Each JSONL row includes:
 - `text_length_chars`
 
 This is a data-ingest step, not yet a final Qwen training row. The next step would be converting these filings into reasoning-oriented `instruction` / `input` / `output` JSONL examples once the team decides the annotation format.
+
+Note:
+
+- SEC filing text is public source material, but the model-training rows you build from it should be short, structured examples rather than raw filing dumps.

@@ -2,6 +2,10 @@
 
 This repo now treats `external/FinGPT/` as the upstream finance task/data reference layer.
 
+Primary upstream repo:
+
+- https://github.com/AI4Finance-Foundation/FinGPT
+
 The target model does not change:
 
 - base model: `Qwen/Qwen3.6-27B`
@@ -28,6 +32,10 @@ These are the primary FinGPT files this repo depends on:
   - benchmark task logic such as `fpb.py`, `fiqa.py`, `headline.py`, `tfns.py`, `nwgi.py`
 - `external/FinGPT/fingpt/FinGPT_Sentiment_Analysis_v3/training_int4/train.ipynb`
   - FinGPT's prior 4-bit training precedent
+
+Related source index:
+
+- `docs/sources.md`
 
 ## 1. Which FinGPT datasets/tasks are useful for the first adapter?
 
@@ -166,3 +174,8 @@ So today:
 
 - verified path: repo-local HF/PEFT QLoRA
 - intended acceleration path: Unsloth in a separate, isolated environment once the ARM64/CUDA packaging issue is solved cleanly
+
+Official Unsloth references:
+
+- https://docs.unsloth.ai/models/qwen3-how-to-run-and-fine-tune
+- https://docs.unsloth.ai/basics/chat-templates

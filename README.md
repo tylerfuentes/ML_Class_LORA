@@ -55,6 +55,7 @@ Training and data integration notes now live in:
 - `docs/training-setup.md`
 - `docs/fingpt-integration.md`
 - `docs/fingpt-conversion.md`
+- `docs/sources.md`
 
 The next project step is building the first clean finance baseline dataset and comparing base Qwen vs a small finance adapter.
 
@@ -92,3 +93,15 @@ The DGX Spark will act as the shared execution environment for:
 - collaborative development through SSH and VS Code Remote SSH
 
 To avoid collisions, the team should coordinate training windows and keep experiment outputs organized by run name and owner.
+
+## References
+
+The repo keeps a central source list in:
+
+- `docs/sources.md`
+
+The most important upstream references are:
+
+- FinGPT: https://github.com/AI4Finance-Foundation/FinGPT
+- Unsloth docs: https://docs.unsloth.ai/models/qwen3-how-to-run-and-fine-tune
+- SEC EDGAR API docs: https://www.sec.gov/search-filings/edgar-application-programming-interfaces

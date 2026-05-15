@@ -8,6 +8,11 @@ The current verified path is:
 - repo-local Hugging Face / PEFT training
 - 4-bit QLoRA adapters only
 
+Related references:
+
+- `docs/fingpt-integration.md`
+- `docs/sources.md`
+
 ## Layout
 
 - `training/`: environment bootstrap and training scripts
@@ -144,3 +149,8 @@ So for now:
 
 - verified training path: repo-local HF/PEFT QLoRA
 - intended later path: isolated Unsloth environment once the ARM64/CUDA package resolution issue is solved cleanly
+
+Official Unsloth references:
+
+- https://docs.unsloth.ai/models/qwen3-how-to-run-and-fine-tune
+- https://docs.unsloth.ai/basics/datasets-guide
