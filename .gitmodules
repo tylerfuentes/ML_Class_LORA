@@ -1,0 +1,3 @@
+[submodule "external/FinGPT"]
+	path = external/FinGPT
+	url = https://github.com/AI4Finance-Foundation/FinGPT

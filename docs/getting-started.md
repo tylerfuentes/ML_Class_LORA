@@ -101,11 +101,12 @@ Once your public key is installed on the DGX, you will receive:
 
 - confirmation that your Cornell NetID is your Linux username
 - the relay host and port
+- the SSH host alias, if the team is using one
 
 Then your SSH command will look like:
 
 ```bash
-ssh -o HostKeyAlias=spark-1b8a-relay -p 57325 <your-netid>@129.158.50.228
+ssh -o HostKeyAlias=<relay-host-alias> -p <relay-port> <your-netid>@<relay-host>
 ```
 
 ## Step 4: Test SSH access
@@ -113,12 +114,13 @@ ssh -o HostKeyAlias=spark-1b8a-relay -p 57325 <your-netid>@129.158.50.228
 After your account is provisioned, test login from a terminal.
 
 ```bash
-ssh -o HostKeyAlias=spark-1b8a-relay -p 57325 <your-netid>@129.158.50.228
+ssh -o HostKeyAlias=<relay-host-alias> -p <relay-port> <your-netid>@<relay-host>
 ```
 
 If this works, your machine is ready for VS Code Remote SSH.
 
-If you get a host-key prompt on first connect, accept the DGX relay host key for `spark-1b8a-relay`.
+
+If you get a host-key prompt on first connect, accept the DGX relay host key for the host alias your admin gave you.
 
 ## Step 5: Use VS Code Remote SSH
 
@@ -135,7 +137,7 @@ Then:
 4. Enter:
 
 ```text
-ssh -o HostKeyAlias=spark-1b8a-relay -p 57325 <your-netid>@129.158.50.228
+ssh -o HostKeyAlias=<relay-host-alias> -p <relay-port> <your-netid>@<relay-host>
 ```
 
 5. Open the project directory on the DGX after login.
@@ -144,12 +146,14 @@ If you prefer editing your SSH config directly, add:
 
 ```sshconfig
 Host dgx-class
-    HostName 129.158.50.228
-    Port 57325
+    HostName <relay-host>
+    Port <relay-port>
     User <your-netid>
-    HostKeyAlias spark-1b8a-relay
+    HostKeyAlias <relay-host-alias>
     IdentityFile ~/.ssh/id_ed25519
 ```
+
+If you are the machine owner, keep DGX-specific values in ignored local files under `admin/local/` rather than editing tracked docs.
 
 ## GitHub workflow
 

@@ -52,23 +52,27 @@ The script:
 
 Give each teammate:
 
-- relay host: `129.158.50.228`
-- relay port: `57325`
+- relay host
+- relay port
 - their Linux username
+- the SSH host alias if you are using one
+
+Use a host-key alias so the DGX relay key stays separate from any other SSH host keys.
 
 Their VS Code Remote SSH target will look like:
 
 ```bash
-ssh -p 57325 <username>@129.158.50.228
+ssh -o HostKeyAlias=<relay-host-alias> -p <relay-port> <username>@<relay-host>
 ```
 
 You can also send this SSH config block:
 
 ```sshconfig
 Host dgx-class
-    HostName 129.158.50.228
-    Port 57325
+    HostName <relay-host>
+    Port <relay-port>
     User <username>
+    HostKeyAlias <relay-host-alias>
     IdentityFile ~/.ssh/id_ed25519
 ```
 
@@ -77,6 +81,7 @@ Host dgx-class
 - Teammates do not get OCI shell access.
 - The relay port terminates on the DGX SSH daemon through a reverse tunnel.
 - Keep teammate accounts out of `sudo` and `docker`.
+- Keep machine-specific relay values in ignored local files under `admin/local/`, not in tracked docs.
 
 ## Notes
 

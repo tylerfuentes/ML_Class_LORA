@@ -6,6 +6,8 @@ runs/
 wandb/
 .cache/
 logs/
+admin/local/
+docs/local/
 **/__pycache__/
 *.pyc
 *.safetensors

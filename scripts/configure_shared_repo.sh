@@ -16,5 +16,6 @@ fi
 chgrp -R "${GROUP_NAME}" "${REPO_ROOT}"
 find "${REPO_ROOT}" -type d -exec chmod 2775 {} +
 find "${REPO_ROOT}" -type f -exec chmod 664 {} +
+find "${REPO_ROOT}/scripts" -type f -name "*.sh" -exec chmod 775 {} +
 
 echo "Configured ${REPO_ROOT} for shared group ${GROUP_NAME}."

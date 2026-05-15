@@ -1,25 +1,30 @@
 # DGX Remote Access
 
+This file is the tracked template. Put machine-specific hostnames, relay ports, and one-off operational notes in `admin/local/README_REMOTE_ACCESS.local.md`.
+
 Connect with:
 
 ```bash
-ssh -p 57325 <your_dgx_username>@129.158.50.228
+ssh -o HostKeyAlias=<relay-host-alias> -p <relay-port> <your_dgx_username>@<relay-host>
 ```
+
+First-time connect note: accept the DGX relay host key for your configured host alias if prompted.
 
 VS Code Remote SSH config:
 
 ```sshconfig
 Host dgx-class
-    HostName 129.158.50.228
-    Port 57325
+    HostName <relay-host>
+    Port <relay-port>
     User <your_dgx_username>
+    HostKeyAlias <relay-host-alias>
     IdentityFile ~/.ssh/id_ed25519
 ```
 
 Work inside:
 
 ```text
-/srv/dgxteam
+<shared-workspace-path>
 ```
 
 Rules:
