@@ -2,7 +2,7 @@
 import argparse
 import math
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 
 import torch
 from transformers import DataCollatorForLanguageModeling, Trainer, TrainingArguments
@@ -20,6 +20,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model-id", default="Qwen/Qwen3.6-27B")
     parser.add_argument("--train-file", required=True, help="Path to JSONL training data.")
+    parser.add_argument("--eval-file", help="Path to JSONL evaluation data.")
+    parser.add_argument("--test-file", help="Path to JSONL holdout data for metadata tracking.")
     parser.add_argument("--output-dir", default="./outputs/qwen36-27b-finance-lora")
     parser.add_argument("--max-seq-length", type=int, default=2048)
     parser.add_argument("--epochs", type=float, default=1.0)
@@ -34,6 +36,12 @@ def main():
     parser.add_argument("--use-qlora", action="store_true", default=True)
     parser.add_argument("--disable-qlora", action="store_true")
     parser.add_argument("--local-files-only", action="store_true", default=False)
+    parser.add_argument(
+        "--max-total-examples",
+        type=int,
+        default=1000,
+        help="Safety cap for the first baseline. Use --max-total-examples 0 to disable.",
+    )
     args = parser.parse_args()
 
     cfg = ModelConfig(
@@ -46,16 +54,30 @@ def main():
         local_files_only=args.local_files_only,
     )
 
-    examples = load_jsonl_examples(args.train_file)
-    dataset = None
+    train_examples = load_jsonl_examples(args.train_file)
+    eval_examples = load_jsonl_examples(args.eval_file) if args.eval_file else []
+    test_examples = load_jsonl_examples(args.test_file) if args.test_file else []
+    total_examples = len(train_examples) + len(eval_examples) + len(test_examples)
+    if args.max_total_examples and total_examples > args.max_total_examples:
+        raise ValueError(
+            "Refusing to train on more than "
+            f"{args.max_total_examples} total examples for the baseline run. "
+            "Trim the dataset or set --max-total-examples 0 to override."
+        )
+
     os.makedirs(args.output_dir, exist_ok=True)
     model, tokenizer = make_model_and_tokenizer(cfg)
     model.print_trainable_parameters()
-    dataset = build_tokenized_dataset(examples, cfg.max_seq_length, tokenizer)
+    train_dataset = build_tokenized_dataset(train_examples, cfg.max_seq_length, tokenizer)
+    eval_dataset = (
+        build_tokenized_dataset(eval_examples, cfg.max_seq_length, tokenizer)
+        if eval_examples
+        else None
+    )
     collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
 
     effective_batch_size = args.per_device_train_batch_size * args.gradient_accumulation_steps
-    max_steps = max(1, math.ceil(len(dataset) * args.epochs / effective_batch_size))
+    max_steps = max(1, math.ceil(len(train_dataset) * args.epochs / effective_batch_size))
 
     training_args = TrainingArguments(
         output_dir=args.output_dir,
@@ -72,31 +94,41 @@ def main():
         remove_unused_columns=False,
         dataloader_num_workers=0,
         optim="paged_adamw_8bit" if cfg.use_qlora else "adamw_torch",
+        eval_strategy="steps" if eval_dataset is not None else "no",
+        eval_steps=args.save_steps if eval_dataset is not None else None,
     )
 
     trainer = Trainer(
         model=model,
         args=training_args,
-        train_dataset=dataset,
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
         data_collator=collator,
     )
 
-    start = datetime.utcnow().isoformat()
+    start = datetime.now(UTC).isoformat()
     result = trainer.train()
+    eval_metrics = trainer.evaluate() if eval_dataset is not None else {}
     model.save_pretrained(args.output_dir)
     tokenizer.save_pretrained(args.output_dir)
 
     run_summary = {
         "start_utc": start,
-        "end_utc": datetime.utcnow().isoformat(),
+        "end_utc": datetime.now(UTC).isoformat(),
         "model_id": cfg.model_id,
         "train_file": os.path.abspath(args.train_file),
-        "num_examples": len(examples),
+        "eval_file": os.path.abspath(args.eval_file) if args.eval_file else None,
+        "test_file": os.path.abspath(args.test_file) if args.test_file else None,
+        "num_train_examples": len(train_examples),
+        "num_eval_examples": len(eval_examples),
+        "num_test_examples": len(test_examples),
+        "num_total_examples": total_examples,
         "max_steps": max_steps,
         "effective_batch_size": effective_batch_size,
         "use_qlora": cfg.use_qlora,
         "train_runtime": result.metrics.get("train_runtime"),
         "train_loss": result.metrics.get("train_loss"),
+        "eval_loss": eval_metrics.get("eval_loss"),
         "peak_gpu_mem_allocated_gb": (
             torch.cuda.max_memory_allocated() / (1024 ** 3) if torch.cuda.is_available() else None
         ),

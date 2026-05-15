@@ -36,7 +36,12 @@ Suggested Linux usernames for DGX access:
 
 ## Repository status
 
-The repository currently contains the SSH onboarding and machine-access tooling.
+The repository currently contains:
+
+- SSH onboarding and machine-access tooling
+- a repo-local QLoRA training scaffold for `Qwen/Qwen3.6-27B`
+- a pinned `FinGPT` submodule under `external/FinGPT/`
+- small public sample data and export scripts for FinGPT / SEC demos
 
 - Teammate getting-started guide: `docs/getting-started.md`
 - Team SSH key intake file: `docs/team-ssh-keys.md`
@@ -45,15 +50,19 @@ The repository currently contains the SSH onboarding and machine-access tooling.
 - Shared repo permissions: `scripts/configure_shared_repo.sh`
 - Per-user provisioning: `scripts/provision_teammate.sh`
 
-The next infrastructure step is collecting one public SSH key from each teammate. After SSH access is in place, the local Qwen 3.6 LoRA training setup and project code can be added to this repository.
+Training and data integration notes now live in:
+
+- `docs/training-setup.md`
+- `docs/fingpt-integration.md`
+- `docs/fingpt-conversion.md`
+
+The next project step is building the first clean finance baseline dataset and comparing base Qwen vs a small finance adapter.
 
 ## SSH onboarding
 
 This repo is set up for separate Linux accounts per teammate rather than a shared login. That keeps access cleaner and works well with VS Code Remote SSH.
 
-Current relay endpoint for teammate access:
-
-- `129.158.50.228:57325`
+Machine-specific relay values are intentionally not tracked in this repo. Keep current host, port, and hardening notes in ignored local files under `admin/local/`.
 
 Provisioning details live in:
 
@@ -61,6 +70,7 @@ Provisioning details live in:
 - `docs/team-ssh-keys.md`
 - `docs/ssh-onboarding.md`
 - `docs/teammate-key-request.md`
+- `admin/LOCAL_OVERRIDES.md`
 
 ## Expected project structure
 

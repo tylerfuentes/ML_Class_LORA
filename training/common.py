@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 import json
 import os
+import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Iterable
 
 import torch
@@ -9,8 +11,6 @@ from datasets import Dataset
 from peft import LoraConfig, TaskType, get_peft_model, prepare_model_for_kbit_training
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
-
-SYSTEM_PROMPT = "You are a precise financial analysis assistant."
 LORA_TARGET_MODULES = [
     "q_proj",
     "k_proj",
@@ -20,6 +20,7 @@ LORA_TARGET_MODULES = [
     "up_proj",
     "down_proj",
 ]
+FINGPT_BENCHMARK_DIR = Path(__file__).resolve().parents[1] / "external" / "FinGPT" / "fingpt" / "FinGPT_Benchmark"
 
 
 @dataclass
@@ -33,15 +34,28 @@ class ModelConfig:
     local_files_only: bool
 
 
+def build_fingpt_prompt(instruction: str, input_text: str) -> str:
+    if not FINGPT_BENCHMARK_DIR.is_dir():
+        raise FileNotFoundError(
+            "FinGPT submodule not found. Expected "
+            f"{FINGPT_BENCHMARK_DIR}. Run: git submodule update --init --recursive"
+        )
+
+    benchmark_dir = str(FINGPT_BENCHMARK_DIR)
+    if benchmark_dir not in sys.path:
+        sys.path.insert(0, benchmark_dir)
+
+    from utils import get_prompt  # type: ignore
+
+    return get_prompt("default", instruction, input_text)
+
+
 def format_example(example: dict) -> str:
     instruction = example["instruction"].strip()
-    user_block = f"Instruction: {instruction}"
     input_text = example.get("input", "").strip()
-    if input_text:
-        user_block += f"\nInput: {input_text}"
+    user_block = build_fingpt_prompt(instruction, input_text)
     output_text = example["output"].strip()
     return (
-        f"<|im_start|>system\n{SYSTEM_PROMPT}<|im_end|>\n"
         f"<|im_start|>user\n{user_block}<|im_end|>\n"
         f"<|im_start|>assistant\n{output_text}<|im_end|>"
     )
@@ -138,4 +152,3 @@ def write_json(path: str, payload: dict) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(payload, handle, indent=2)
-

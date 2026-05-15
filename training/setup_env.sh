@@ -24,6 +24,13 @@ pip install \
   "huggingface_hub>=0.24" \
   "tensorboard>=2.17"
 
+if [[ "${INSTALL_UNSLOTH:-0}" == "1" ]]; then
+  echo "[warn] INSTALL_UNSLOTH=1 requested."
+  echo "[warn] On this DGX ARM64 stack, a direct pip install of unsloth previously"
+  echo "[warn] resolved a CPU-only torch build and broke CUDA visibility."
+  echo "[warn] Use a separate experimental environment unless this has been re-validated."
+fi
+
 python - <<'PY'
 import torch, transformers, peft, trl, datasets
 print("[ok] torch:", torch.__version__)
