@@ -42,6 +42,7 @@ The repository currently contains:
 - a repo-local QLoRA training scaffold for `Qwen/Qwen3.6-27B`
 - a pinned `FinGPT` submodule under `external/FinGPT/`
 - small public sample data and export scripts for FinGPT / SEC demos
+- a local WRDS / IBES bronze-silver-gold pipeline for building event-level datasets
 
 - Teammate getting-started guide: `docs/getting-started.md`
 - Team SSH key intake file: `docs/team-ssh-keys.md`
@@ -52,12 +53,40 @@ The repository currently contains:
 
 Training and data integration notes now live in:
 
+- `AGENTS.md`
+- `docs/agent-workflow.md`
 - `docs/training-setup.md`
 - `docs/fingpt-integration.md`
 - `docs/fingpt-conversion.md`
+- `docs/wrds-data-setup.md`
 - `docs/sources.md`
 
-The next project step is building the first clean finance baseline dataset and comparing base Qwen vs a small finance adapter.
+The next project step is building clean event-level finance datasets and then comparing base Qwen vs a small finance adapter.
+
+## Data storage rules
+
+GitHub stores:
+
+- code
+- docs
+- configs
+- tiny samples
+
+Google Drive and ignored local folders store:
+
+- WRDS raw data
+- WRDS-derived parquet tables
+- WRDS-derived JSONL datasets
+
+The core local WRDS path is:
+
+```text
+admin/local/wrds-downloads/tr_ibes_11289435.csv
+```
+
+The core pipeline doc is:
+
+- `docs/wrds-data-setup.md`
 
 ## SSH onboarding
 

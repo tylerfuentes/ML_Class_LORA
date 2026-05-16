@@ -1,0 +1,4 @@
+raw_ibes_csv: "admin/local/wrds-downloads/tr_ibes_11289435.csv"
+processed_dir: "data/processed/ibes_lora_baseline"
+outputs_dir: "outputs"
+fingpt_dir: "external/FinGPT"

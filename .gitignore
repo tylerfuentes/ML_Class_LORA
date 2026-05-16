@@ -7,7 +7,14 @@ wandb/
 .cache/
 logs/
 admin/local/
+data/processed/
 docs/local/
+config/*.local.yaml
+*.csv
+!data/samples/*.csv
+*.parquet
+*.jsonl
+!data/samples/*.jsonl
 **/__pycache__/
 *.pyc
 *.safetensors
