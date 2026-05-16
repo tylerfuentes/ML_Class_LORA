@@ -10,6 +10,8 @@ admin/local/
 data/processed/
 docs/local/
 config/*.local.yaml
+docs/wrds-playwright.md
+scripts/wrds_playwright_session.mjs
 *.csv
 !data/samples/*.csv
 *.parquet
