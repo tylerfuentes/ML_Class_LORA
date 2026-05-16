@@ -13,8 +13,9 @@ from ibes_pipeline import (
     build_gold,
     build_lora_row,
     build_silver,
+    create_spark,
     format_size,
-    load_raw_ibes,
+    load_raw_ibes_spark,
     resolve_path,
     sample_gold_splits,
     write_jsonl,
@@ -68,54 +69,63 @@ def main() -> int:
     for directory in [bronze_dir, silver_dir, gold_dir, report_dir]:
         directory.mkdir(parents=True, exist_ok=True)
 
-    raw = load_raw_ibes(input_path)
-    bronze = build_bronze(raw)
-    silver, silver_stats = build_silver(bronze)
-    gold, gold_stats = build_gold(silver, neutral_abs_delta=args.neutral_abs_delta)
+    spark = create_spark("ibes-medallion")
+    try:
+        raw = load_raw_ibes_spark(spark, input_path)
+        bronze = build_bronze(raw)
+        silver, silver_stats = build_silver(bronze)
+        gold, gold_stats = build_gold(silver, neutral_abs_delta=args.neutral_abs_delta)
 
-    bronze_path = bronze_dir / "ibes_bronze.parquet"
-    silver_path = silver_dir / "ibes_eps_us_current.parquet"
-    gold_path = gold_dir / "ibes_revision_events.parquet"
-    bronze.to_parquet(bronze_path, index=False)
-    silver.to_parquet(silver_path, index=False)
-    gold.to_parquet(gold_path, index=False)
+        bronze_path = bronze_dir / "ibes_bronze.parquet"
+        silver_path = silver_dir / "ibes_eps_us_current.parquet"
+        gold_path = gold_dir / "ibes_revision_events.parquet"
+        bronze.write.mode("overwrite").parquet(str(bronze_path))
+        silver.write.mode("overwrite").parquet(str(silver_path))
+        gold.write.mode("overwrite").parquet(str(gold_path))
 
-    split_reports: dict[str, dict] = {}
-    split_reports[BASELINE_1K.name] = write_split_bundle(gold, out_dir, spec=BASELINE_1K, seed=args.seed)
-    if not args.skip_10k and len(gold) >= BASELINE_10K.total:
-        split_reports[BASELINE_10K.name] = write_split_bundle(
-            gold, out_dir, spec=BASELINE_10K, seed=args.seed + 1
+        gold_count = gold.count()
+        split_reports: dict[str, dict] = {}
+        split_reports[BASELINE_1K.name] = write_split_bundle(
+            gold, out_dir, spec=BASELINE_1K, seed=args.seed
         )
+        if not args.skip_10k and gold_count >= BASELINE_10K.total:
+            split_reports[BASELINE_10K.name] = write_split_bundle(
+                gold, out_dir, spec=BASELINE_10K, seed=args.seed + 1
+            )
 
-    report = {
-        "input_path": str(input_path),
-        "input_size": format_size(input_path.stat().st_size),
-        "rows": {
-            "raw": int(len(raw)),
-            "bronze": int(len(bronze)),
-            "silver": int(len(silver)),
-            "gold": int(len(gold)),
-        },
-        "silver_stats": silver_stats,
-        "gold_stats": gold_stats,
-        "artifacts": {
-            "bronze": str(bronze_path),
-            "silver": str(silver_path),
-            "gold": str(gold_path),
-        },
-        "splits": split_reports,
-    }
-    report_path = report_dir / "ibes_pipeline_report.json"
-    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+        report = {
+            "input_path": str(input_path),
+            "input_size": format_size(input_path.stat().st_size),
+            "engine": "pyspark",
+            "rows": {
+                "raw": int(raw.count()),
+                "bronze": int(bronze.count()),
+                "silver": int(silver.count()),
+                "gold": int(gold_count),
+            },
+            "silver_stats": silver_stats,
+            "gold_stats": gold_stats,
+            "artifacts": {
+                "bronze": str(bronze_path),
+                "silver": str(silver_path),
+                "gold": str(gold_path),
+            },
+            "splits": split_reports,
+        }
+        report_path = report_dir / "ibes_pipeline_report.json"
+        report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
 
-    print("WRDS / IBES pipeline complete")
-    print(f"- input: {input_path}")
-    print(f"- bronze: {bronze_path}")
-    print(f"- silver: {silver_path}")
-    print(f"- gold: {gold_path}")
-    print(f"- report: {report_path}")
-    for split_name, counts in split_reports.items():
-        print(f"- {split_name}: train={counts['train']}, eval={counts['eval']}, holdout={counts['holdout']}")
+        print("WRDS / IBES pipeline complete")
+        print("- engine: pyspark")
+        print(f"- input: {input_path}")
+        print(f"- bronze: {bronze_path}")
+        print(f"- silver: {silver_path}")
+        print(f"- gold: {gold_path}")
+        print(f"- report: {report_path}")
+        for split_name, counts in split_reports.items():
+            print(f"- {split_name}: train={counts['train']}, eval={counts['eval']}, holdout={counts['holdout']}")
+    finally:
+        spark.stop()
     return 0
 
 

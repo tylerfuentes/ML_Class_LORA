@@ -42,7 +42,7 @@ The repository currently contains:
 - a repo-local QLoRA training scaffold for `Qwen/Qwen3.6-27B`
 - a pinned `FinGPT` submodule under `external/FinGPT/`
 - small public sample data and export scripts for FinGPT / SEC demos
-- a local WRDS / IBES bronze-silver-gold pipeline for building event-level datasets
+- a PySpark WRDS / IBES bronze-silver-gold pipeline for building event-level datasets
 
 - Teammate getting-started guide: `docs/getting-started.md`
 - Team SSH key intake file: `docs/team-ssh-keys.md`

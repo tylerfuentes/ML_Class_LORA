@@ -6,7 +6,15 @@ import platform
 import sys
 from pathlib import Path
 
-from ibes_pipeline import DEFAULT_RAW_IBES, EXPECTED_IBES_COLUMNS, format_size, load_csv_header, resolve_path
+from ibes_pipeline import (
+    DEFAULT_RAW_IBES,
+    EXPECTED_IBES_COLUMNS,
+    create_spark,
+    format_size,
+    java_version,
+    load_csv_header,
+    resolve_path,
+)
 
 
 def status_line(level: str, message: str) -> str:
@@ -71,6 +79,19 @@ def main() -> int:
             print(status_line("PASS", f"{module_name}={getattr(module, '__version__', 'unknown')}"))
         except Exception as exc:
             failures.append(f"{module_name} import failed: {exc}")
+
+    try:
+        import pyspark
+
+        print(status_line("PASS", f"pyspark={pyspark.__version__}"))
+        if java_version():
+            print(status_line("PASS", f"java={java_version()}"))
+        spark = create_spark("doctor-check")
+        spark.range(1).count()
+        print(status_line("PASS", f"spark_master={spark.sparkContext.master}"))
+        spark.stop()
+    except Exception as exc:
+        failures.append(f"pyspark runtime failed: {exc}")
 
     try:
         __import__("unsloth")

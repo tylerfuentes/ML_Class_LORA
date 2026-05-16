@@ -5,6 +5,7 @@ This repo includes a local finance QLoRA workflow for `Qwen/Qwen3.6-27B` on the 
 The current verified path is:
 
 - FinGPT-native task/data structure
+- PySpark medallion data preparation
 - repo-local Hugging Face / PEFT training
 - 4-bit QLoRA adapters only
 
@@ -108,6 +109,9 @@ Do not scale beyond `1,000` examples until:
 - the adapter saves correctly
 - the adapter loads for inference without errors
 
+That `1,000` example cap is an initial validation gate, not the long-term dataset target.
+The data pipeline is expected to support larger gold-derived splits after the first successful run.
+
 Suggested paths:
 
 ```text
@@ -130,6 +134,12 @@ python training/train_finance_lora.py \
   --max-seq-length 1024
 ```
 
+Planned next scale step after the first successful adapter:
+
+- `10,000` train
+- `1,000` eval
+- `1,000` holdout
+
 ## Notes
 
 - The base model already exists locally on this machine from the earlier setup.
@@ -138,6 +148,7 @@ python training/train_finance_lora.py \
 - The trainer now defaults to a `1,000` example safety cap. Use `--max-total-examples 0` only if you intentionally want to override it later.
 - Research direction notes and arXiv references live in `docs/research-directions.md`.
 - `external/FinGPT/` is the upstream finance reference layer. Prefer its native task format before adding local wrappers.
+- WRDS / IBES medallion prep now runs through PySpark, not a pandas-only path.
 
 ## Unsloth note
 

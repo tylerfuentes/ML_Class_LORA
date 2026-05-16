@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
 import pandas as pd
+from pyspark.sql import DataFrame, SparkSession, functions as F
+from pyspark.sql.window import Window
 
 EXPECTED_IBES_COLUMNS = [
     "TICKER",
@@ -76,41 +79,55 @@ def load_csv_header(path: Path) -> list[str]:
     return pd.read_csv(path, nrows=0).columns.tolist()
 
 
-def load_raw_ibes(path: Path) -> pd.DataFrame:
-    df = pd.read_csv(
-        path,
-        dtype="string",
-        keep_default_na=False,
-        na_filter=False,
-        low_memory=False,
+def spark_master() -> str:
+    return "local[*]"
+
+
+def create_spark(app_name: str) -> SparkSession:
+    return (
+        SparkSession.builder.appName(app_name)
+        .master(spark_master())
+        .config("spark.sql.session.timeZone", "UTC")
+        .config("spark.sql.shuffle.partitions", "32")
+        .config("spark.ui.showConsoleProgress", "true")
+        .getOrCreate()
+    )
+
+
+def java_version() -> str | None:
+    try:
+        proc = subprocess.run(
+            ["java", "-version"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        return None
+    output = (proc.stderr or proc.stdout).splitlines()
+    return output[0] if output else None
+
+
+def clean_text_column(column_name: str):
+    return F.when(F.trim(F.col(column_name)) == "", F.lit(None)).otherwise(F.trim(F.col(column_name)))
+
+
+def load_raw_ibes_spark(spark: SparkSession, path: Path) -> DataFrame:
+    df = (
+        spark.read.option("header", True)
+        .option("multiLine", False)
+        .option("mode", "FAILFAST")
+        .csv(str(path))
     )
     missing = [column for column in EXPECTED_IBES_COLUMNS if column not in df.columns]
     if missing:
         raise ValueError(f"Missing expected IBES columns: {missing}")
-    return df[EXPECTED_IBES_COLUMNS].copy()
+    return df.select(*EXPECTED_IBES_COLUMNS)
 
 
-def clean_text(series: pd.Series) -> pd.Series:
-    return series.astype("string").str.strip().replace({"": pd.NA})
-
-
-def clean_numeric(series: pd.Series) -> pd.Series:
-    return pd.to_numeric(clean_text(series), errors="coerce")
-
-
-def clean_date(series: pd.Series) -> pd.Series:
-    return pd.to_datetime(clean_text(series), errors="coerce").dt.normalize()
-
-
-def first_valid(series: pd.Series):
-    non_null = series.dropna()
-    return non_null.iloc[0] if not non_null.empty else pd.NA
-
-
-def build_bronze(df: pd.DataFrame) -> pd.DataFrame:
-    bronze = df.copy()
-
-    for column in [
+def build_bronze(df: DataFrame) -> DataFrame:
+    bronze = df
+    text_columns = [
         "TICKER",
         "CUSIP",
         "OFTIC",
@@ -130,58 +147,54 @@ def build_bronze(df: pd.DataFrame) -> pd.DataFrame:
         "ANNDATS",
         "ANNTIMS",
         "report_curr",
-    ]:
-        bronze[column] = clean_text(bronze[column])
+    ]
+    for column in text_columns:
+        bronze = bronze.withColumn(column, clean_text_column(column))
 
-    bronze["VALUE"] = clean_numeric(bronze["VALUE"])
-    bronze["ACTDATS"] = clean_date(bronze["ACTDATS"])
-    bronze["REVDATS"] = clean_date(bronze["REVDATS"])
-    bronze["ANNDATS"] = clean_date(bronze["ANNDATS"])
-    bronze["FPEDATS"] = clean_date(bronze["FPEDATS"])
-
-    bronze["ticker_norm"] = bronze["TICKER"].str.upper()
-    bronze["oftic_norm"] = bronze["OFTIC"].str.upper()
-    bronze["cusip8"] = bronze["CUSIP"].str.upper().str.slice(0, 8)
-    bronze["company_name_norm"] = bronze["CNAME"].str.upper()
-    bronze["measure_norm"] = bronze["MEASURE"].str.upper()
-    bronze["currfl_norm"] = bronze["CURRFL"].str.upper()
-    bronze["pdf_norm"] = bronze["PDF"].str.upper()
-    bronze["fpi_norm"] = bronze["FPI"].str.upper()
-    bronze["report_currency_norm"] = bronze["report_curr"].str.upper()
-    bronze["estimate_currency_norm"] = bronze["CURR"].str.upper()
-    bronze["usfirm_flag"] = clean_numeric(bronze["USFIRM"]).astype("Int64")
-    bronze["event_date"] = bronze["REVDATS"].fillna(bronze["ANNDATS"]).fillna(bronze["ACTDATS"])
-    bronze["event_time"] = bronze["REVTIMS"].fillna(bronze["ANNTIMS"]).fillna(bronze["ACTTIMS"])
-    bronze["company_key"] = bronze["oftic_norm"].fillna(bronze["ticker_norm"]).fillna(bronze["cusip8"])
+    bronze = (
+        bronze.withColumn("VALUE", F.col("VALUE").cast("double"))
+        .withColumn("ACTDATS", F.to_date("ACTDATS"))
+        .withColumn("REVDATS", F.to_date("REVDATS"))
+        .withColumn("ANNDATS", F.to_date("ANNDATS"))
+        .withColumn("FPEDATS", F.to_date("FPEDATS"))
+        .withColumn("ticker_norm", F.upper(F.col("TICKER")))
+        .withColumn("oftic_norm", F.upper(F.col("OFTIC")))
+        .withColumn("cusip8", F.upper(F.substring(F.col("CUSIP"), 1, 8)))
+        .withColumn("company_name_norm", F.upper(F.col("CNAME")))
+        .withColumn("measure_norm", F.upper(F.col("MEASURE")))
+        .withColumn("currfl_norm", F.upper(F.col("CURRFL")))
+        .withColumn("pdf_norm", F.upper(F.col("PDF")))
+        .withColumn("fpi_norm", F.upper(F.col("FPI")))
+        .withColumn("report_currency_norm", F.upper(F.col("report_curr")))
+        .withColumn("estimate_currency_norm", F.upper(F.col("CURR")))
+        .withColumn("usfirm_flag", F.col("USFIRM").cast("int"))
+        .withColumn("event_date", F.coalesce(F.col("REVDATS"), F.col("ANNDATS"), F.col("ACTDATS")))
+        .withColumn("event_time", F.coalesce(F.col("REVTIMS"), F.col("ANNTIMS"), F.col("ACTTIMS")))
+        .withColumn("company_key", F.coalesce(F.col("oftic_norm"), F.col("ticker_norm"), F.col("cusip8")))
+    )
     return bronze
 
 
-def build_silver(bronze: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
-    filters = {
-        "rows_in": int(len(bronze)),
-        "eps_rows": int(bronze["measure_norm"].eq("EPS").sum()),
-        "us_firm_rows": int(bronze["usfirm_flag"].eq(1).sum()),
-        "current_rows_assuming_blank_is_current": int(
-            bronze["currfl_norm"].fillna("C").eq("C").sum()
-        ),
-        "usd_rows_assuming_blank_is_usd": int(
-            bronze["report_currency_norm"].fillna("USD").eq("USD").sum()
-        ),
-        "rows_with_event_date": int(bronze["event_date"].notna().sum()),
-        "rows_with_numeric_value": int(bronze["VALUE"].notna().sum()),
-    }
+def build_silver(bronze: DataFrame) -> tuple[DataFrame, dict]:
+    rows_in = bronze.count()
+    eps_rows = bronze.filter(F.col("measure_norm") == "EPS").count()
+    us_firm_rows = bronze.filter(F.col("usfirm_flag") == 1).count()
+    current_rows = bronze.filter(F.coalesce(F.col("currfl_norm"), F.lit("C")) == "C").count()
+    usd_rows = bronze.filter(F.coalesce(F.col("report_currency_norm"), F.lit("USD")) == "USD").count()
+    rows_with_event_date = bronze.filter(F.col("event_date").isNotNull()).count()
+    rows_with_numeric_value = bronze.filter(F.col("VALUE").isNotNull()).count()
 
-    mask = (
-        bronze["measure_norm"].eq("EPS")
-        & bronze["usfirm_flag"].eq(1)
-        & bronze["currfl_norm"].fillna("C").eq("C")
-        & bronze["report_currency_norm"].fillna("USD").eq("USD")
-        & bronze["event_date"].notna()
-        & bronze["VALUE"].notna()
-        & bronze["company_key"].notna()
+    silver = bronze.filter(
+        (F.col("measure_norm") == "EPS")
+        & (F.col("usfirm_flag") == 1)
+        & (F.coalesce(F.col("currfl_norm"), F.lit("C")) == "C")
+        & (F.coalesce(F.col("report_currency_norm"), F.lit("USD")) == "USD")
+        & F.col("event_date").isNotNull()
+        & F.col("VALUE").isNotNull()
+        & F.col("company_key").isNotNull()
     )
-    silver = bronze.loc[mask].copy()
 
+    before_dedup = silver.count()
     duplicate_subset = [
         "company_key",
         "ticker_norm",
@@ -194,66 +207,35 @@ def build_silver(bronze: pd.DataFrame) -> tuple[pd.DataFrame, dict]:
         "event_date",
         "VALUE",
     ]
-    duplicate_count = int(silver.duplicated(subset=duplicate_subset).sum())
-    silver = silver.drop_duplicates(subset=duplicate_subset, keep="first").copy()
+    silver = silver.dropDuplicates(duplicate_subset)
+    after_dedup = silver.count()
 
-    silver = silver.rename(
-        columns={
-            "ANALYS": "analyst_id",
-            "ESTIMATOR": "estimator_id",
-            "VALUE": "estimate_value",
-            "ACTDATS": "actual_date",
-            "REVDATS": "revision_date",
-            "ANNDATS": "announce_date",
-            "FPEDATS": "fiscal_period_end_date",
-            "ACTTIMS": "actual_time",
-            "REVTIMS": "revision_time",
-            "ANNTIMS": "announce_time",
-        }
-    )
-
-    silver["analyst_id"] = clean_text(silver["analyst_id"])
-    silver["estimator_id"] = clean_text(silver["estimator_id"])
+    silver = silver.withColumnRenamed("ANALYS", "analyst_id")
+    silver = silver.withColumnRenamed("ESTIMATOR", "estimator_id")
+    silver = silver.withColumnRenamed("VALUE", "estimate_value")
+    silver = silver.withColumnRenamed("ACTDATS", "actual_date")
+    silver = silver.withColumnRenamed("REVDATS", "revision_date")
+    silver = silver.withColumnRenamed("ANNDATS", "announce_date")
+    silver = silver.withColumnRenamed("FPEDATS", "fiscal_period_end_date")
+    silver = silver.withColumnRenamed("ACTTIMS", "actual_time")
+    silver = silver.withColumnRenamed("REVTIMS", "revision_time")
+    silver = silver.withColumnRenamed("ANNTIMS", "announce_time")
 
     stats = {
-        **filters,
-        "rows_after_filters": int(len(silver)),
-        "duplicate_rows_removed": duplicate_count,
+        "rows_in": int(rows_in),
+        "eps_rows": int(eps_rows),
+        "us_firm_rows": int(us_firm_rows),
+        "current_rows_assuming_blank_is_current": int(current_rows),
+        "usd_rows_assuming_blank_is_usd": int(usd_rows),
+        "rows_with_event_date": int(rows_with_event_date),
+        "rows_with_numeric_value": int(rows_with_numeric_value),
+        "rows_after_filters": int(after_dedup),
+        "duplicate_rows_removed": int(before_dedup - after_dedup),
     }
     return silver, stats
 
 
-def assign_direction_label(delta: float | None, neutral_abs_delta: float) -> str:
-    if delta is None or pd.isna(delta):
-        return "neutral"
-    if abs(float(delta)) < neutral_abs_delta:
-        return "neutral"
-    return "positive" if float(delta) > 0 else "negative"
-
-
-def assign_magnitude_bucket(
-    delta: float | None, pct_change: float | None, neutral_abs_delta: float
-) -> str:
-    if delta is None or pd.isna(delta):
-        return "unknown"
-    abs_delta = abs(float(delta))
-    if abs_delta < neutral_abs_delta:
-        return "flat"
-    if pct_change is not None and not pd.isna(pct_change):
-        pct_value = abs(float(pct_change))
-        if pct_value < 0.05:
-            return "small"
-        if pct_value < 0.15:
-            return "medium"
-        return "large"
-    if abs_delta < 0.05:
-        return "small"
-    if abs_delta < 0.25:
-        return "medium"
-    return "large"
-
-
-def build_gold(silver: pd.DataFrame, neutral_abs_delta: float = 0.005) -> tuple[pd.DataFrame, dict]:
+def build_gold(silver: DataFrame, neutral_abs_delta: float = 0.005) -> tuple[DataFrame, dict]:
     group_cols = [
         "company_key",
         "ticker_norm",
@@ -268,67 +250,95 @@ def build_gold(silver: pd.DataFrame, neutral_abs_delta: float = 0.005) -> tuple[
     ]
 
     gold = (
-        silver.groupby(group_cols, dropna=False)
+        silver.groupBy(*group_cols)
         .agg(
-            estimate_count=("estimate_value", "size"),
-            analyst_count=("analyst_id", lambda s: int(s.dropna().nunique())),
-            estimator_count=("estimator_id", lambda s: int(s.dropna().nunique())),
-            consensus_mean=("estimate_value", "mean"),
-            consensus_median=("estimate_value", "median"),
-            consensus_std=("estimate_value", "std"),
-            consensus_min=("estimate_value", "min"),
-            consensus_max=("estimate_value", "max"),
-            actual_date=("actual_date", "min"),
-            announce_date=("announce_date", "min"),
-            revision_date=("revision_date", "min"),
-            event_time=("event_time", first_valid),
+            F.count("*").alias("estimate_count"),
+            F.countDistinct("analyst_id").alias("analyst_count"),
+            F.countDistinct("estimator_id").alias("estimator_count"),
+            F.avg("estimate_value").alias("consensus_mean"),
+            F.expr("percentile_approx(estimate_value, 0.5)").alias("consensus_median"),
+            F.stddev_samp("estimate_value").alias("consensus_std"),
+            F.min("estimate_value").alias("consensus_min"),
+            F.max("estimate_value").alias("consensus_max"),
+            F.min("actual_date").alias("actual_date"),
+            F.min("announce_date").alias("announce_date"),
+            F.min("revision_date").alias("revision_date"),
+            F.first("event_time", ignorenulls=True).alias("event_time"),
         )
-        .reset_index()
     )
 
-    gold = gold.sort_values(
-        by=["company_key", "fpi_norm", "fiscal_period_end_date", "event_date"],
-        kind="mergesort",
-    ).reset_index(drop=True)
-    history_key = (
-        gold["company_key"].fillna("UNK")
-        + "|"
-        + gold["fpi_norm"].fillna("UNK")
-        + "|"
-        + gold["fiscal_period_end_date"].astype("string").fillna("UNK")
+    gold = gold.withColumn(
+        "history_key",
+        F.concat_ws(
+            "|",
+            F.coalesce(F.col("company_key"), F.lit("UNK")),
+            F.coalesce(F.col("fpi_norm"), F.lit("UNK")),
+            F.coalesce(F.col("fiscal_period_end_date").cast("string"), F.lit("UNK")),
+        ),
     )
-    gold["history_key"] = history_key
-    gold["prior_consensus_median"] = gold.groupby("history_key")["consensus_median"].shift(1)
-    gold["prior_consensus_mean"] = gold.groupby("history_key")["consensus_mean"].shift(1)
-    gold["consensus_delta"] = gold["consensus_median"] - gold["prior_consensus_median"]
-    gold["consensus_pct_change"] = gold["consensus_delta"] / gold["prior_consensus_median"].abs()
-    gold.loc[gold["prior_consensus_median"].abs() < 1e-9, "consensus_pct_change"] = pd.NA
-    gold["direction_label"] = gold["consensus_delta"].apply(
-        lambda value: assign_direction_label(value, neutral_abs_delta)
+
+    order_window = Window.partitionBy("history_key").orderBy(
+        F.col("event_date").asc(),
+        F.coalesce(F.col("event_time"), F.lit("00:00:00")).asc(),
+        F.coalesce(F.col("ticker_norm"), F.lit("")),
     )
-    gold["magnitude_bucket"] = [
-        assign_magnitude_bucket(delta, pct_change, neutral_abs_delta)
-        for delta, pct_change in zip(gold["consensus_delta"], gold["consensus_pct_change"])
-    ]
-    gold["event_type"] = "ibes_analyst_revision_consensus"
-    gold["event_id"] = (
-        gold["company_key"].fillna("UNK")
-        + "|"
-        + gold["event_date"].astype("string").fillna("UNK")
-        + "|"
-        + gold["fpi_norm"].fillna("UNK")
-        + "|"
-        + gold["fiscal_period_end_date"].astype("string").fillna("UNK")
+    gold = (
+        gold.withColumn("prior_consensus_median", F.lag("consensus_median").over(order_window))
+        .withColumn("prior_consensus_mean", F.lag("consensus_mean").over(order_window))
+        .withColumn("consensus_delta", F.col("consensus_median") - F.col("prior_consensus_median"))
+        .withColumn(
+            "consensus_pct_change",
+            F.when(
+                F.col("prior_consensus_median").isNull()
+                | (F.abs(F.col("prior_consensus_median")) < F.lit(1e-9)),
+                F.lit(None).cast("double"),
+            ).otherwise(F.col("consensus_delta") / F.abs(F.col("prior_consensus_median"))),
+        )
+        .withColumn(
+            "direction_label",
+            F.when(F.col("consensus_delta").isNull(), F.lit("neutral"))
+            .when(F.abs(F.col("consensus_delta")) < F.lit(neutral_abs_delta), F.lit("neutral"))
+            .when(F.col("consensus_delta") > 0, F.lit("positive"))
+            .otherwise(F.lit("negative")),
+        )
+        .withColumn(
+            "magnitude_bucket",
+            F.when(F.col("consensus_delta").isNull(), F.lit("unknown"))
+            .when(F.abs(F.col("consensus_delta")) < F.lit(neutral_abs_delta), F.lit("flat"))
+            .when(F.col("consensus_pct_change").isNotNull() & (F.abs(F.col("consensus_pct_change")) < 0.05), F.lit("small"))
+            .when(F.col("consensus_pct_change").isNotNull() & (F.abs(F.col("consensus_pct_change")) < 0.15), F.lit("medium"))
+            .when(F.col("consensus_pct_change").isNotNull(), F.lit("large"))
+            .when(F.abs(F.col("consensus_delta")) < 0.05, F.lit("small"))
+            .when(F.abs(F.col("consensus_delta")) < 0.25, F.lit("medium"))
+            .otherwise(F.lit("large"))
+        )
+        .withColumn("event_type", F.lit("ibes_analyst_revision_consensus"))
+        .withColumn(
+            "event_id",
+            F.concat_ws(
+                "|",
+                F.coalesce(F.col("company_key"), F.lit("UNK")),
+                F.coalesce(F.col("event_date").cast("string"), F.lit("UNK")),
+                F.coalesce(F.col("fpi_norm"), F.lit("UNK")),
+                F.coalesce(F.col("fiscal_period_end_date").cast("string"), F.lit("UNK")),
+            ),
+        )
+        .drop("history_key")
     )
-    gold = gold.drop(columns=["history_key"])
+
+    event_rows_out = gold.count()
+    rows_with_prior_consensus = gold.filter(F.col("prior_consensus_median").isNotNull()).count()
+    positive_labels = gold.filter(F.col("direction_label") == "positive").count()
+    negative_labels = gold.filter(F.col("direction_label") == "negative").count()
+    neutral_labels = gold.filter(F.col("direction_label") == "neutral").count()
 
     stats = {
-        "rows_in": int(len(silver)),
-        "event_rows_out": int(len(gold)),
-        "rows_with_prior_consensus": int(gold["prior_consensus_median"].notna().sum()),
-        "positive_labels": int(gold["direction_label"].eq("positive").sum()),
-        "negative_labels": int(gold["direction_label"].eq("negative").sum()),
-        "neutral_labels": int(gold["direction_label"].eq("neutral").sum()),
+        "rows_in": int(silver.count()),
+        "event_rows_out": int(event_rows_out),
+        "rows_with_prior_consensus": int(rows_with_prior_consensus),
+        "positive_labels": int(positive_labels),
+        "negative_labels": int(negative_labels),
+        "neutral_labels": int(neutral_labels),
     }
     return gold, stats
 
@@ -338,6 +348,11 @@ def _value_or_none(value):
         return None
     if isinstance(value, pd.Timestamp):
         return value.date().isoformat()
+    if hasattr(value, "isoformat"):
+        try:
+            return value.isoformat()
+        except TypeError:
+            pass
     if isinstance(value, float):
         return round(value, 6)
     return value
@@ -404,35 +419,39 @@ def write_jsonl(rows: Iterable[dict], path: Path) -> int:
     return count
 
 
-def sample_gold_splits(gold: pd.DataFrame, split: SplitSpec, seed: int) -> dict[str, pd.DataFrame]:
-    if len(gold) < split.total:
+def sample_gold_splits(gold: DataFrame, split: SplitSpec, seed: int) -> dict[str, pd.DataFrame]:
+    total_rows = gold.count()
+    if total_rows < split.total:
         raise ValueError(
-            f"Need at least {split.total} gold events for {split.name}, but only found {len(gold)}."
+            f"Need at least {split.total} gold events for {split.name}, but only found {total_rows}."
         )
-    sample = gold.sample(n=split.total, random_state=seed).reset_index(drop=True)
+    sample_pdf = gold.orderBy(F.rand(seed)).limit(split.total).toPandas().reset_index(drop=True)
     return {
-        "train": sample.iloc[: split.train].copy(),
-        "eval": sample.iloc[split.train : split.train + split.eval].copy(),
-        "holdout": sample.iloc[split.train + split.eval :].copy(),
+        "train": sample_pdf.iloc[: split.train].copy(),
+        "eval": sample_pdf.iloc[split.train : split.train + split.eval].copy(),
+        "holdout": sample_pdf.iloc[split.train + split.eval :].copy(),
     }
 
 
-def key_missingness(df: pd.DataFrame, columns: Iterable[str]) -> dict[str, float]:
-    rows = max(len(df), 1)
-    return {
-        column: round(float(df[column].isna().sum()) / rows, 6)
-        for column in columns
-        if column in df.columns
-    }
+def key_missingness(df: DataFrame, columns: Iterable[str]) -> dict[str, float]:
+    row_count = df.count()
+    if row_count == 0:
+        return {column: 0.0 for column in columns if column in df.columns}
+    metrics = df.agg(
+        *[
+            (F.sum(F.when(F.col(column).isNull(), 1).otherwise(0)) / F.lit(row_count)).alias(column)
+            for column in columns
+            if column in df.columns
+        ]
+    ).collect()[0].asDict()
+    return {column: round(float(value or 0.0), 6) for column, value in metrics.items()}
 
 
-def dataset_date_range(df: pd.DataFrame, column: str) -> dict[str, str | None]:
+def dataset_date_range(df: DataFrame, column: str) -> dict[str, str | None]:
     if column not in df.columns:
         return {"min": None, "max": None}
-    non_null = df[column].dropna()
-    if non_null.empty:
-        return {"min": None, "max": None}
+    row = df.agg(F.min(column).alias("min"), F.max(column).alias("max")).collect()[0]
     return {
-        "min": non_null.min().date().isoformat(),
-        "max": non_null.max().date().isoformat(),
+        "min": row["min"].isoformat() if row["min"] is not None else None,
+        "max": row["max"].isoformat() if row["max"] is not None else None,
     }

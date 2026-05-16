@@ -7,6 +7,8 @@ WRDS raw data and WRDS-derived processed datasets belong in:
 - Google Drive for team sharing
 - ignored local folders for actual execution on the DGX
 
+The required medallion pipeline engine is **PySpark**.
+
 ## Storage model
 
 GitHub keeps:
@@ -61,6 +63,8 @@ make summarize-ibes
 make prepare-ibes-small
 ```
 
+The pipeline code uses PySpark for bronze / silver / gold processing and only materializes small sampled JSONL exports for LoRA/eval.
+
 ## Medallion layout
 
 The IBES pipeline writes a lightweight bronze / silver / gold layout under the output directory:
@@ -86,7 +90,7 @@ jsonl/baseline_10k/
 
 ### Bronze
 
-- raw WRDS IBES CSV loaded into typed columns
+- raw WRDS IBES CSV loaded into typed columns with PySpark
 - normalized tickers / OFTIC / CUSIP
 - parsed dates and numeric values
 - event date derived from revision date, then announcement date, then actual date
@@ -109,6 +113,18 @@ jsonl/baseline_10k/
 - deterministic magnitude bucket
 
 The first LoRA/eval JSONL exports are intentionally simple and structured. Do not add fancy reasoning fields until the event labels are trustworthy.
+
+## Scale plan
+
+The first `800 / 100 / 100` split is only a validation gate for the first successful LoRA run.
+
+After the first adapter trains and reloads cleanly, the next intended scale step is:
+
+- `10,000` train
+- `1,000` eval
+- `1,000` holdout
+
+The gold table should stay much larger than either split so additional sources can be joined later without redesigning the pipeline.
 
 ## Colab
 

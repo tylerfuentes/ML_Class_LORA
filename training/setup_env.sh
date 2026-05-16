@@ -20,6 +20,7 @@ pip install \
   "trl>=0.20" \
   "datasets>=2.20" \
   "bitsandbytes>=0.43" \
+  "pyspark>=3.5,<3.6" \
   "safetensors>=0.4" \
   "huggingface_hub>=0.24" \
   "tensorboard>=2.17"

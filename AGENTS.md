@@ -4,6 +4,7 @@
 
 This repo builds a finance/event-reasoning LoRA workflow around `Qwen/Qwen3.6-27B`.
 The current verified training path is Hugging Face Transformers + PEFT + bitsandbytes QLoRA.
+The required data pipeline engine is PySpark.
 FinGPT is the upstream finance task/benchmark reference, imported as a git submodule.
 WRDS data is shared through Google Drive and local ignored folders, not through git.
 
@@ -47,11 +48,11 @@ Relevant recent local facts:
 - `scripts/check_wrds_data.py`
   - confirm the raw WRDS CSV exists and has the expected IBES columns
 - `scripts/summarize_ibes.py`
-  - print a compact audit report for the raw WRDS IBES CSV
+  - print a compact PySpark audit report for the raw WRDS IBES CSV
 - `scripts/prepare_ibes_dataset.py`
-  - build bronze / silver / gold IBES artifacts plus small JSONL baselines
+  - build PySpark bronze / silver / gold IBES artifacts plus small JSONL baselines
 - `scripts/ibes_pipeline.py`
-  - shared bronze / silver / gold IBES helpers used by the command scripts
+  - shared PySpark bronze / silver / gold IBES helpers used by the command scripts
 - `scripts/test_wrds_connection.py`
   - sanity-check direct WRDS Python/Postgres authentication
 - `training/train_smoke.py`
@@ -104,12 +105,12 @@ Google Drive mirrors:
 
 1. Run doctor.
 2. Check the raw WRDS CSV.
-3. Summarize the IBES CSV.
-4. Build bronze / silver / gold IBES artifacts.
+3. Summarize the IBES CSV with PySpark.
+4. Build PySpark bronze / silver / gold IBES artifacts.
 5. Run `training/train_smoke.py`.
 6. Train a 1k baseline adapter.
 7. Validate or evaluate the saved adapter.
-8. Only then consider scaling up.
+8. Scale to larger gold-derived splits only after the first adapter works.
 
 ## FinGPT usage
 
@@ -131,6 +132,7 @@ Google Drive mirrors:
 - Do not commit browser profiles or cookies.
 - Do not commit model weights or checkpoints.
 - Do not train on all 2.8M IBES rows directly.
+- Do not replace the PySpark data path with a pandas-only path.
 - Do not guess FinGPT APIs; inspect the submodule first.
 - Do not modify the working `.venv` to test Unsloth.
 
