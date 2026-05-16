@@ -10,14 +10,13 @@ WRDS data is shared through Google Drive and local ignored folders, not through 
 ## Local machine context
 
 This repo lives on a DGX Spark workstation with existing team SSH onboarding and relay infrastructure already in use.
-The repo already has working QLoRA scaffolding, a repaired CUDA-capable `.venv`, and a WRDS Playwright fallback for web-authenticated data capture.
+The repo already has working QLoRA scaffolding and a repaired CUDA-capable `.venv`.
 Use the repo-local workflow below first; do not re-derive infrastructure that is already present on this machine.
 
 Relevant recent local facts:
 - Existing SSH onboarding for `ML_Class_LORA` was already implemented and pushed.
 - Existing Qwen 3.6 27B QLoRA training infrastructure was already found and migrated into this repo.
 - Reverse-SSH relay access for teammates already exists; do not rewrite that workflow unless explicitly asked.
-- WRDS Playwright capture fallback was already implemented and works with a persistent authenticated browser context.
 - The main repo `.venv` was previously repaired after an Unsloth install pulled a CPU-only torch build on ARM64.
 
 ## Directory map
@@ -55,8 +54,6 @@ Relevant recent local facts:
   - shared bronze / silver / gold IBES helpers used by the command scripts
 - `scripts/test_wrds_connection.py`
   - sanity-check direct WRDS Python/Postgres authentication
-- `scripts/wrds_playwright_session.mjs`
-  - launch/reuse the authenticated browser session and capture WRDS web pages when DB auth is unavailable
 - `training/train_smoke.py`
   - verified one-step QLoRA smoke run
 - `training/train_finance_lora.py`
@@ -99,8 +96,7 @@ Google Drive mirrors:
 
 ## WRDS access guidance
 
-- Prefer direct WRDS Python/Postgres access only if credentials are verified to work.
-- If direct WRDS DB auth fails but Cornell/WRDS web auth works, use the existing Playwright fallback rather than inventing a new scraper.
+- Prefer direct WRDS Python/Postgres access when credentials are verified to work.
 - Do not commit WRDS CSVs or derived large datasets; keep them under ignored local paths or Google Drive.
 - Commit only small non-proprietary samples, scripts, and docs.
 
@@ -174,4 +170,3 @@ make prepare-ibes-small
 - `docs/training-setup.md`
 - `docs/fingpt-integration.md`
 - `docs/wrds-setup.md`
-- `docs/wrds-playwright.md`

@@ -72,11 +72,6 @@ That means:
 - SSL connection is working
 - the remaining issue is username/password validity or WRDS account activation
 
-In parallel, the repo now includes a browser-session fallback for WRDS web captures:
-
-- `docs/wrds-playwright.md`
-- `scripts/wrds_playwright_session.mjs`
-
 ## Next step after auth works
 
 Once the connection test passes, the repo can add WRDS data pull scripts for:

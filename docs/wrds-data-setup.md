@@ -128,4 +128,3 @@ Use the DGX for actual training.
 - `docs/training-setup.md`
 - `docs/fingpt-integration.md`
 - `docs/wrds-setup.md`
-- `docs/wrds-playwright.md`
