@@ -1,0 +1,133 @@
+{
+  "model_id": "Qwen/Qwen3.6-27B",
+  "adapter_path": "/home/nathanaelguitar/ML_Class_LORA/outputs/qwen36-27b-ibes-baseline",
+  "qwen_thinking_mode": "nonthinking",
+  "temperature": 0.0,
+  "max_new_tokens": 80,
+  "batch_size": 1,
+  "local_files_only": false,
+  "instruction_suffix": "",
+  "thinking_instruction_suffix": "",
+  "nonthinking_instruction_suffix": "",
+  "run_label": "",
+  "tasks": {
+    "benchmark_fiqa": {
+      "nonthinking": {
+        "base": {
+          "sample_count": 64,
+          "accuracy": 0.78125,
+          "macro_f1": 0.6491168091168091,
+          "invalid_parse_count": 5,
+          "parse_failure_rate": 0.078125,
+          "format_compliance_rate": 0.921875,
+          "average_output_chars": 335.28125,
+          "average_output_tokens": 64.75,
+          "average_latency_seconds": 8.802348979251747,
+          "truncated_output_rate": 0.1875,
+          "contains_think_rate": 0.0,
+          "malformed_think_tag_rate": 0.0,
+          "json_after_reasoning_text_rate": 0.0,
+          "parseable_after_strip_rate": 0.921875,
+          "per_class": {
+            "negative": {
+              "precision": 0.9444444444444444,
+              "recall": 0.8095238095238095,
+              "f1": 0.8717948717948718,
+              "support": 21
+            },
+            "neutral": {
+              "precision": 0.3333333333333333,
+              "recall": 0.16666666666666666,
+              "f1": 0.2222222222222222,
+              "support": 6
+            },
+            "positive": {
+              "precision": 0.8421052631578947,
+              "recall": 0.8648648648648649,
+              "f1": 0.8533333333333334,
+              "support": 37
+            }
+          },
+          "confusion": {
+            "negative->__invalid__": 2,
+            "negative->negative": 17,
+            "negative->positive": 2,
+            "neutral->__invalid__": 1,
+            "neutral->neutral": 1,
+            "neutral->positive": 4,
+            "positive->__invalid__": 2,
+            "positive->negative": 1,
+            "positive->neutral": 2,
+            "positive->positive": 32
+          },
+          "prompt_mode": "nonthinking",
+          "variant": "base",
+          "used_chat_template": true,
+          "fallback_reasons": [],
+          "chat_template_effective": true
+        },
+        "adapter": {
+          "sample_count": 64,
+          "accuracy": 0.8125,
+          "macro_f1": 0.6758687258687259,
+          "invalid_parse_count": 0,
+          "parse_failure_rate": 0.0,
+          "format_compliance_rate": 1.0,
+          "average_output_chars": 14.0625,
+          "average_output_tokens": 3.21875,
+          "average_latency_seconds": 1.0195627897674058,
+          "truncated_output_rate": 0.015625,
+          "contains_think_rate": 0.0,
+          "malformed_think_tag_rate": 0.0,
+          "json_after_reasoning_text_rate": 0.0,
+          "parseable_after_strip_rate": 1.0,
+          "per_class": {
+            "negative": {
+              "precision": 0.8947368421052632,
+              "recall": 0.8095238095238095,
+              "f1": 0.8500000000000001,
+              "support": 21
+            },
+            "neutral": {
+              "precision": 0.25,
+              "recall": 0.3333333333333333,
+              "f1": 0.28571428571428575,
+              "support": 6
+            },
+            "positive": {
+              "precision": 0.8918918918918919,
+              "recall": 0.8918918918918919,
+              "f1": 0.8918918918918919,
+              "support": 37
+            }
+          },
+          "confusion": {
+            "negative->negative": 17,
+            "negative->neutral": 2,
+            "negative->positive": 2,
+            "neutral->negative": 2,
+            "neutral->neutral": 2,
+            "neutral->positive": 2,
+            "positive->neutral": 4,
+            "positive->positive": 33
+          },
+          "prompt_mode": "nonthinking",
+          "variant": "adapter",
+          "used_chat_template": true,
+          "fallback_reasons": [],
+          "chat_template_effective": true
+        },
+        "delta": {
+          "accuracy": 0.03125,
+          "macro_f1": 0.026751916751916793,
+          "parse_failure_rate": -0.078125,
+          "format_compliance_rate": 0.078125,
+          "contains_think_rate": 0.0,
+          "parseable_after_strip_rate": 0.078125
+        },
+        "verdict": "improved"
+      }
+    }
+  },
+  "skipped": []
+}

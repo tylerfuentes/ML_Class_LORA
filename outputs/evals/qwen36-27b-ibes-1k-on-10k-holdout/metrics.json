@@ -1,0 +1,132 @@
+{
+  "model_id": "Qwen/Qwen3.6-27B",
+  "adapter_path": "/home/nathanaelguitar/ML_Class_LORA/outputs/qwen36-27b-ibes-baseline",
+  "qwen_thinking_mode": "nonthinking",
+  "temperature": 0.0,
+  "max_new_tokens": 80,
+  "batch_size": 1,
+  "local_files_only": true,
+  "instruction_suffix": "",
+  "thinking_instruction_suffix": "",
+  "nonthinking_instruction_suffix": "",
+  "run_label": "1k-adapter-on-10k-holdout-cached-base",
+  "tasks": {
+    "wrds_holdout": {
+      "nonthinking": {
+        "base": {
+          "sample_count": 1000,
+          "accuracy": 0.449,
+          "macro_f1": 0.5405173642908819,
+          "invalid_parse_count": 534,
+          "parse_failure_rate": 0.534,
+          "format_compliance_rate": 0.0,
+          "average_output_chars": 288.739,
+          "average_output_tokens": 79.994,
+          "average_latency_seconds": 10.377353390382778,
+          "truncated_output_rate": 0.999,
+          "contains_think_rate": 0.0,
+          "malformed_think_tag_rate": 0.0,
+          "json_after_reasoning_text_rate": 0.0,
+          "parseable_after_strip_rate": 0.466,
+          "per_class": {
+            "negative": {
+              "precision": 0.9254385964912281,
+              "recall": 0.6133720930232558,
+              "f1": 0.7377622377622377,
+              "support": 344
+            },
+            "neutral": {
+              "precision": 1.0,
+              "recall": 0.005698005698005698,
+              "f1": 0.011331444759206801,
+              "support": 351
+            },
+            "positive": {
+              "precision": 1.0,
+              "recall": 0.7737704918032787,
+              "f1": 0.8724584103512014,
+              "support": 305
+            }
+          },
+          "confusion": {
+            "negative->__invalid__": 133,
+            "negative->negative": 211,
+            "neutral->__invalid__": 332,
+            "neutral->negative": 17,
+            "neutral->neutral": 2,
+            "positive->__invalid__": 69,
+            "positive->positive": 236
+          },
+          "exact_json_match_rate": 0.0,
+          "magnitude_bucket_accuracy": 0.0,
+          "event_type_accuracy": 0.0,
+          "prompt_mode": "nonthinking",
+          "variant": "base",
+          "used_chat_template": true,
+          "fallback_reasons": [],
+          "chat_template_effective": true
+        },
+        "adapter": {
+          "sample_count": 1000,
+          "accuracy": 1.0,
+          "macro_f1": 1.0,
+          "invalid_parse_count": 0,
+          "parse_failure_rate": 0.0,
+          "format_compliance_rate": 1.0,
+          "average_output_chars": 109.277,
+          "average_output_tokens": 28.0,
+          "average_latency_seconds": 4.424436874970153,
+          "truncated_output_rate": 0.0,
+          "contains_think_rate": 0.0,
+          "malformed_think_tag_rate": 0.0,
+          "json_after_reasoning_text_rate": 0.0,
+          "parseable_after_strip_rate": 1.0,
+          "per_class": {
+            "negative": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 344
+            },
+            "neutral": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 351
+            },
+            "positive": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 305
+            }
+          },
+          "confusion": {
+            "negative->negative": 344,
+            "neutral->neutral": 351,
+            "positive->positive": 305
+          },
+          "exact_json_match_rate": 0.994,
+          "magnitude_bucket_accuracy": 0.994,
+          "event_type_accuracy": 1.0,
+          "prompt_mode": "nonthinking",
+          "variant": "adapter",
+          "used_chat_template": true,
+          "fallback_reasons": [],
+          "chat_template_effective": true
+        },
+        "delta": {
+          "accuracy": 0.5509999999999999,
+          "macro_f1": 0.45948263570911807,
+          "parse_failure_rate": -0.534,
+          "format_compliance_rate": 1.0,
+          "contains_think_rate": 0.0,
+          "parseable_after_strip_rate": 0.534
+        },
+        "verdict": "improved"
+      }
+    }
+  },
+  "skipped": [],
+  "base_predictions_source": "/home/nathanaelguitar/ML_Class_LORA/outputs/evals/qwen36-27b-ibes-10k-holdout/predictions_base.jsonl"
+}

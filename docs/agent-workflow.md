@@ -84,6 +84,8 @@ python training/train_finance_lora.py \
 ## How to run eval
 
 Keep the holdout split untouched and compare base vs adapter on the same examples before claiming improvement.
+Technical training success is not the same as model improvement.
+The current adapter is an ordinary instruction/structured-output LoRA, not explicit Qwen thinking-mode training.
 
 If an adapter already exists, validate that it loads:
 
@@ -92,6 +94,36 @@ python training/validate_adapter.py \
   --base-model Qwen/Qwen3.6-27B \
   --adapter-dir outputs/qwen36-27b-ibes-baseline
 ```
+
+Then run the evaluation harness:
+
+```bash
+python eval/evaluate_base_vs_adapter.py \
+  --model-id Qwen/Qwen3.6-27B \
+  --adapter-path outputs/qwen36-27b-ibes-baseline \
+  --holdout-file data/processed/ibes_lora_baseline/jsonl/baseline_1k/holdout.jsonl \
+  --output-dir outputs/evals/qwen36-27b-ibes-baseline-holdout \
+  --qwen-thinking-mode both \
+  --max-new-tokens 80 \
+  --batch-size 1 \
+  --local-files-only
+```
+
+This compares:
+
+- base Qwen in thinking mode
+- adapter Qwen in thinking mode
+- base Qwen in non-thinking mode
+- adapter Qwen in non-thinking mode
+
+Look at:
+
+- `metrics.json`
+- `eval_summary.md`
+- `confusion_matrix.csv`
+- `regression_examples.md`
+
+Do not claim benchmark or reasoning improvement until those files show exact metric wins over base Qwen.
 
 ## What not to touch
 

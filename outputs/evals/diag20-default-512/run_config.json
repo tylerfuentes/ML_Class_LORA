@@ -1,0 +1,20 @@
+{
+  "model_id": "Qwen/Qwen3.6-27B",
+  "adapter_path": "outputs/qwen36-27b-ibes-baseline",
+  "eval_file": null,
+  "holdout_file": "data/processed/ibes_lora_baseline/jsonl/baseline_1k/holdout.jsonl",
+  "benchmark": null,
+  "output_dir": "outputs/evals/diag20-default-512",
+  "max_examples": 20,
+  "max_new_tokens": 512,
+  "temperature": 0.0,
+  "batch_size": 1,
+  "local_files_only": true,
+  "qwen_thinking_mode": "both",
+  "benchmark_split_size": 128,
+  "benchmark_seed": 42,
+  "instruction_suffix": "",
+  "thinking_instruction_suffix": "",
+  "nonthinking_instruction_suffix": "",
+  "run_label": "diag20-default-512"
+}

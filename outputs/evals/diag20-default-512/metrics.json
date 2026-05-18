@@ -1,0 +1,240 @@
+{
+  "model_id": "Qwen/Qwen3.6-27B",
+  "adapter_path": "/home/nathanaelguitar/ML_Class_LORA/outputs/qwen36-27b-ibes-baseline",
+  "qwen_thinking_mode": "both",
+  "temperature": 0.0,
+  "max_new_tokens": 512,
+  "batch_size": 1,
+  "local_files_only": true,
+  "instruction_suffix": "",
+  "thinking_instruction_suffix": "",
+  "nonthinking_instruction_suffix": "",
+  "run_label": "diag20-default-512",
+  "tasks": {
+    "wrds_holdout": {
+      "thinking": {
+        "base": {
+          "sample_count": 20,
+          "accuracy": 0.75,
+          "macro_f1": 0.841025641025641,
+          "invalid_parse_count": 5,
+          "parse_failure_rate": 0.25,
+          "format_compliance_rate": 0.0,
+          "average_output_chars": 1713.05,
+          "average_output_tokens": 512.0,
+          "average_latency_seconds": 65.49887405669942,
+          "truncated_output_rate": 1.0,
+          "contains_think_rate": 0.0,
+          "malformed_think_tag_rate": 0.0,
+          "json_after_reasoning_text_rate": 0.0,
+          "parseable_after_strip_rate": 0.75,
+          "per_class": {
+            "negative": {
+              "precision": 1.0,
+              "recall": 0.8571428571428571,
+              "f1": 0.923076923076923,
+              "support": 7
+            },
+            "neutral": {
+              "precision": 1.0,
+              "recall": 0.42857142857142855,
+              "f1": 0.6,
+              "support": 7
+            },
+            "positive": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 6
+            }
+          },
+          "confusion": {
+            "negative->__invalid__": 1,
+            "negative->negative": 6,
+            "neutral->__invalid__": 4,
+            "neutral->neutral": 3,
+            "positive->positive": 6
+          },
+          "exact_json_match_rate": 0.0,
+          "magnitude_bucket_accuracy": 0.0,
+          "event_type_accuracy": 0.0,
+          "prompt_mode": "thinking",
+          "variant": "base",
+          "used_chat_template": true,
+          "fallback_reasons": [],
+          "chat_template_effective": true
+        },
+        "adapter": {
+          "sample_count": 20,
+          "accuracy": 0.7,
+          "macro_f1": 0.6780626780626781,
+          "invalid_parse_count": 0,
+          "parse_failure_rate": 0.0,
+          "format_compliance_rate": 0.05,
+          "average_output_chars": 1706.4,
+          "average_output_tokens": 512.0,
+          "average_latency_seconds": 68.63598143090057,
+          "truncated_output_rate": 1.0,
+          "contains_think_rate": 0.0,
+          "malformed_think_tag_rate": 0.0,
+          "json_after_reasoning_text_rate": 1.0,
+          "parseable_after_strip_rate": 1.0,
+          "per_class": {
+            "negative": {
+              "precision": 1.0,
+              "recall": 0.8571428571428571,
+              "f1": 0.923076923076923,
+              "support": 7
+            },
+            "neutral": {
+              "precision": 1.0,
+              "recall": 0.2857142857142857,
+              "f1": 0.4444444444444445,
+              "support": 7
+            },
+            "positive": {
+              "precision": 0.5,
+              "recall": 1.0,
+              "f1": 0.6666666666666666,
+              "support": 6
+            }
+          },
+          "confusion": {
+            "negative->negative": 6,
+            "negative->positive": 1,
+            "neutral->neutral": 2,
+            "neutral->positive": 5,
+            "positive->positive": 6
+          },
+          "exact_json_match_rate": 0.65,
+          "magnitude_bucket_accuracy": 0.9,
+          "event_type_accuracy": 1.0,
+          "prompt_mode": "thinking",
+          "variant": "adapter",
+          "used_chat_template": true,
+          "fallback_reasons": [],
+          "chat_template_effective": true
+        },
+        "delta": {
+          "accuracy": -0.050000000000000044,
+          "macro_f1": -0.16296296296296298,
+          "parse_failure_rate": -0.25,
+          "format_compliance_rate": 0.05,
+          "contains_think_rate": 0.0,
+          "parseable_after_strip_rate": 0.25
+        },
+        "verdict": "regressed"
+      },
+      "nonthinking": {
+        "base": {
+          "sample_count": 20,
+          "accuracy": 1.0,
+          "macro_f1": 1.0,
+          "invalid_parse_count": 0,
+          "parse_failure_rate": 0.0,
+          "format_compliance_rate": 0.0,
+          "average_output_chars": 994.55,
+          "average_output_tokens": 267.2,
+          "average_latency_seconds": 33.771353990250645,
+          "truncated_output_rate": 0.05,
+          "contains_think_rate": 0.0,
+          "malformed_think_tag_rate": 0.0,
+          "json_after_reasoning_text_rate": 0.0,
+          "parseable_after_strip_rate": 1.0,
+          "per_class": {
+            "negative": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 7
+            },
+            "neutral": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 7
+            },
+            "positive": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 6
+            }
+          },
+          "confusion": {
+            "negative->negative": 7,
+            "neutral->neutral": 7,
+            "positive->positive": 6
+          },
+          "exact_json_match_rate": 0.0,
+          "magnitude_bucket_accuracy": 0.0,
+          "event_type_accuracy": 0.0,
+          "prompt_mode": "nonthinking",
+          "variant": "base",
+          "used_chat_template": true,
+          "fallback_reasons": [],
+          "chat_template_effective": true
+        },
+        "adapter": {
+          "sample_count": 20,
+          "accuracy": 1.0,
+          "macro_f1": 1.0,
+          "invalid_parse_count": 0,
+          "parse_failure_rate": 0.0,
+          "format_compliance_rate": 1.0,
+          "average_output_chars": 109.3,
+          "average_output_tokens": 28.0,
+          "average_latency_seconds": 4.554547236198414,
+          "truncated_output_rate": 0.0,
+          "contains_think_rate": 0.0,
+          "malformed_think_tag_rate": 0.0,
+          "json_after_reasoning_text_rate": 0.0,
+          "parseable_after_strip_rate": 1.0,
+          "per_class": {
+            "negative": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 7
+            },
+            "neutral": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 7
+            },
+            "positive": {
+              "precision": 1.0,
+              "recall": 1.0,
+              "f1": 1.0,
+              "support": 6
+            }
+          },
+          "confusion": {
+            "negative->negative": 7,
+            "neutral->neutral": 7,
+            "positive->positive": 6
+          },
+          "exact_json_match_rate": 1.0,
+          "magnitude_bucket_accuracy": 1.0,
+          "event_type_accuracy": 1.0,
+          "prompt_mode": "nonthinking",
+          "variant": "adapter",
+          "used_chat_template": true,
+          "fallback_reasons": [],
+          "chat_template_effective": true
+        },
+        "delta": {
+          "accuracy": 0.0,
+          "macro_f1": 0.0,
+          "parse_failure_rate": 0.0,
+          "format_compliance_rate": 1.0,
+          "contains_think_rate": 0.0,
+          "parseable_after_strip_rate": 0.0
+        },
+        "verdict": "inconclusive"
+      }
+    }
+  },
+  "skipped": []
+}

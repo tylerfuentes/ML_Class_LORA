@@ -135,6 +135,9 @@ Recommended order:
 3. Re-run the benchmark slice.
 4. Add `headline` next if we want a better event-classification story before moving to WRDS-style labels.
 
+The repo now treats this comparison as mandatory measurement work, not optional polish.
+If base vs adapter metrics are not reported on the same slice, do not claim improvement.
+
 ## 6. What files should be copied, referenced, or scripted without vendoring the entire repo?
 
 Reference directly from the submodule:
@@ -152,6 +155,42 @@ This repo should own only:
 - small smoke-test samples
 - local docs
 - optional notebook or training launchers
+
+## Evaluation harness
+
+The evaluation entrypoint is:
+
+- `eval/evaluate_base_vs_adapter.py`
+
+It compares:
+
+- base `Qwen/Qwen3.6-27B`
+- `Qwen/Qwen3.6-27B` plus a trained LoRA adapter
+
+It supports:
+
+- WRDS/IBES holdout evaluation
+- FinGPT benchmark slices such as `fpb`, `fiqa`, `tfns`, `nwgi`, and optionally `headline`
+- Qwen thinking-mode and non-thinking-mode prompt comparisons through the tokenizer chat template when supported
+
+Important interpretation rules:
+
+- technical adapter load success is not model improvement
+- current adapter training is ordinary instruction/structured-output LoRA
+- current training is not explicit Qwen thinking-mode supervision
+- Qwen thinking-mode readiness means preserving chat-template behavior and final-answer quality, not claiming hidden reasoning gains
+
+Example benchmark-slice command:
+
+```bash
+python eval/evaluate_base_vs_adapter.py \
+  --model-id Qwen/Qwen3.6-27B \
+  --adapter-path outputs/qwen36-27b-ibes-baseline \
+  --benchmark fpb \
+  --benchmark-split-size 128 \
+  --output-dir outputs/evals/qwen36-27b-fpb \
+  --qwen-thinking-mode both
+```
 
 ## Current repo decisions
 

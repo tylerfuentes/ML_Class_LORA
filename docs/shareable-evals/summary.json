@@ -1,0 +1,392 @@
+{
+  "shareable_note": "Raw WRDS-derived predictions, examples, and ignored outputs stay local. This folder contains only code, docs, and aggregate metrics that are safe to review in git.",
+  "wrds": {
+    "wrds_baseline_holdout": {
+      "task_name": "wrds_holdout",
+      "prompt_mode": "nonthinking",
+      "verdict": "improved",
+      "base": {
+        "accuracy": 0.42,
+        "macro_f1": 0.5183150183150184,
+        "parse_failure_rate": 0.56,
+        "confusion": {
+          "negative->__invalid__": 10,
+          "negative->negative": 22,
+          "neutral->__invalid__": 34,
+          "neutral->negative": 2,
+          "positive->__invalid__": 12,
+          "positive->positive": 20
+        }
+      },
+      "adapter": {
+        "accuracy": 1.0,
+        "macro_f1": 1.0,
+        "parse_failure_rate": 0.0,
+        "exact_json_match_rate": 0.97,
+        "magnitude_bucket_accuracy": 0.97,
+        "confusion": {
+          "negative->negative": 32,
+          "neutral->neutral": 36,
+          "positive->positive": 32
+        }
+      },
+      "delta": {
+        "accuracy": 0.5800000000000001,
+        "macro_f1": 0.48168498168498164,
+        "parse_failure_rate": -0.56
+      },
+      "source_metrics_path": "outputs/evals/qwen36-27b-ibes-baseline-holdout/metrics.json"
+    },
+    "wrds_10k_holdout": {
+      "task_name": "wrds_holdout",
+      "prompt_mode": "nonthinking",
+      "verdict": "improved",
+      "base": {
+        "accuracy": 0.449,
+        "macro_f1": 0.5405173642908819,
+        "parse_failure_rate": 0.534,
+        "confusion": {
+          "negative->__invalid__": 133,
+          "negative->negative": 211,
+          "neutral->__invalid__": 332,
+          "neutral->negative": 17,
+          "neutral->neutral": 2,
+          "positive->__invalid__": 69,
+          "positive->positive": 236
+        }
+      },
+      "adapter": {
+        "accuracy": 1.0,
+        "macro_f1": 1.0,
+        "parse_failure_rate": 0.0,
+        "exact_json_match_rate": 0.999,
+        "magnitude_bucket_accuracy": 0.999,
+        "confusion": {
+          "negative->negative": 344,
+          "neutral->neutral": 351,
+          "positive->positive": 305
+        }
+      },
+      "delta": {
+        "accuracy": 0.5509999999999999,
+        "macro_f1": 0.45948263570911807,
+        "parse_failure_rate": -0.534
+      },
+      "source_metrics_path": "outputs/evals/qwen36-27b-ibes-10k-holdout/metrics.json"
+    },
+    "wrds_1k_on_10k_holdout": {
+      "task_name": "wrds_holdout",
+      "prompt_mode": "nonthinking",
+      "verdict": "improved",
+      "base": {
+        "accuracy": 0.449,
+        "macro_f1": 0.5405173642908819,
+        "parse_failure_rate": 0.534,
+        "confusion": {
+          "negative->__invalid__": 133,
+          "negative->negative": 211,
+          "neutral->__invalid__": 332,
+          "neutral->negative": 17,
+          "neutral->neutral": 2,
+          "positive->__invalid__": 69,
+          "positive->positive": 236
+        }
+      },
+      "adapter": {
+        "accuracy": 1.0,
+        "macro_f1": 1.0,
+        "parse_failure_rate": 0.0,
+        "exact_json_match_rate": 0.994,
+        "magnitude_bucket_accuracy": 0.994,
+        "confusion": {
+          "negative->negative": 344,
+          "neutral->neutral": 351,
+          "positive->positive": 305
+        }
+      },
+      "delta": {
+        "accuracy": 0.5509999999999999,
+        "macro_f1": 0.45948263570911807,
+        "parse_failure_rate": -0.534
+      },
+      "source_metrics_path": "outputs/evals/qwen36-27b-ibes-1k-on-10k-holdout/metrics.json"
+    }
+  },
+  "public_benchmarks": {
+    "fiqa_1k": {
+      "task_name": "benchmark_fiqa",
+      "prompt_mode": "nonthinking",
+      "verdict": "improved",
+      "base": {
+        "accuracy": 0.78125,
+        "macro_f1": 0.6491168091168091,
+        "parse_failure_rate": 0.078125
+      },
+      "adapter": {
+        "accuracy": 0.8125,
+        "macro_f1": 0.6758687258687259,
+        "parse_failure_rate": 0.0,
+        "confusion": {
+          "negative->negative": 17,
+          "negative->neutral": 2,
+          "negative->positive": 2,
+          "neutral->negative": 2,
+          "neutral->neutral": 2,
+          "neutral->positive": 2,
+          "positive->neutral": 4,
+          "positive->positive": 33
+        }
+      },
+      "delta": {
+        "accuracy": 0.03125,
+        "macro_f1": 0.026751916751916793,
+        "parse_failure_rate": -0.078125
+      },
+      "source_metrics_path": "outputs/evals/qwen36-27b-fiqa-nonthinking/metrics.json"
+    },
+    "fiqa_10k": {
+      "task_name": "benchmark_fiqa",
+      "prompt_mode": "nonthinking",
+      "verdict": "improved",
+      "base": {
+        "accuracy": 0.78125,
+        "macro_f1": 0.6491168091168091,
+        "parse_failure_rate": 0.078125
+      },
+      "adapter": {
+        "accuracy": 0.796875,
+        "macro_f1": 0.6596904596904597,
+        "parse_failure_rate": 0.0,
+        "confusion": {
+          "negative->negative": 16,
+          "negative->neutral": 3,
+          "negative->positive": 2,
+          "neutral->negative": 2,
+          "neutral->neutral": 2,
+          "neutral->positive": 2,
+          "positive->neutral": 4,
+          "positive->positive": 33
+        }
+      },
+      "delta": {
+        "accuracy": 0.015625,
+        "macro_f1": 0.010573650573650561,
+        "parse_failure_rate": -0.078125
+      },
+      "source_metrics_path": "outputs/evals/qwen36-27b-fiqa-10k-nonthinking/metrics.json"
+    },
+    "fpb_1k": {
+      "task_name": "benchmark_fpb",
+      "prompt_mode": "nonthinking",
+      "verdict": "improved",
+      "base": {
+        "accuracy": 0.46875,
+        "macro_f1": 0.5229215229215228,
+        "parse_failure_rate": 0.015625
+      },
+      "adapter": {
+        "accuracy": 0.71875,
+        "macro_f1": 0.7553113553113553,
+        "parse_failure_rate": 0.0,
+        "confusion": {
+          "negative->negative": 9,
+          "neutral->negative": 3,
+          "neutral->neutral": 47,
+          "neutral->positive": 33,
+          "positive->positive": 36
+        }
+      },
+      "delta": {
+        "accuracy": 0.25,
+        "macro_f1": 0.23238983238983246,
+        "parse_failure_rate": -0.015625
+      },
+      "source_metrics_path": "outputs/evals/qwen36-27b-fpb-nonthinking/metrics.json"
+    },
+    "fpb_10k": {
+      "task_name": "benchmark_fpb",
+      "prompt_mode": "nonthinking",
+      "verdict": "improved",
+      "base": {
+        "accuracy": 0.46875,
+        "macro_f1": 0.5229215229215228,
+        "parse_failure_rate": 0.015625
+      },
+      "adapter": {
+        "accuracy": 0.640625,
+        "macro_f1": 0.7124521072796934,
+        "parse_failure_rate": 0.0,
+        "confusion": {
+          "negative->negative": 9,
+          "neutral->negative": 2,
+          "neutral->neutral": 37,
+          "neutral->positive": 44,
+          "positive->positive": 36
+        }
+      },
+      "delta": {
+        "accuracy": 0.171875,
+        "macro_f1": 0.1895305843581706,
+        "parse_failure_rate": -0.015625
+      },
+      "source_metrics_path": "outputs/evals/qwen36-27b-fpb-10k-nonthinking/metrics.json"
+    },
+    "tfns_1k": {
+      "task_name": "benchmark_tfns",
+      "prompt_mode": "nonthinking",
+      "verdict": "improved",
+      "base": {
+        "accuracy": 0.5234375,
+        "macro_f1": 0.5581113801452785,
+        "parse_failure_rate": 0.015625
+      },
+      "adapter": {
+        "accuracy": 0.75,
+        "macro_f1": 0.7418760931602688,
+        "parse_failure_rate": 0.0,
+        "confusion": {
+          "negative->negative": 20,
+          "negative->neutral": 4,
+          "neutral->negative": 7,
+          "neutral->neutral": 55,
+          "neutral->positive": 18,
+          "positive->neutral": 3,
+          "positive->positive": 21
+        }
+      },
+      "delta": {
+        "accuracy": 0.2265625,
+        "macro_f1": 0.1837647130149903,
+        "parse_failure_rate": -0.015625
+      },
+      "source_metrics_path": "outputs/evals/qwen36-27b-tfns-1k-nonthinking/metrics.json"
+    },
+    "tfns_10k": {
+      "task_name": "benchmark_tfns",
+      "prompt_mode": "nonthinking",
+      "verdict": "improved",
+      "base": {
+        "accuracy": 0.5234375,
+        "macro_f1": 0.5581113801452785,
+        "parse_failure_rate": 0.015625
+      },
+      "adapter": {
+        "accuracy": 0.6953125,
+        "macro_f1": 0.6969727136734267,
+        "parse_failure_rate": 0.0,
+        "confusion": {
+          "negative->negative": 20,
+          "negative->neutral": 4,
+          "neutral->negative": 10,
+          "neutral->neutral": 46,
+          "neutral->positive": 24,
+          "positive->neutral": 1,
+          "positive->positive": 23
+        }
+      },
+      "delta": {
+        "accuracy": 0.171875,
+        "macro_f1": 0.13886133352814822,
+        "parse_failure_rate": -0.015625
+      },
+      "source_metrics_path": "outputs/evals/qwen36-27b-tfns-10k-nonthinking/metrics.json"
+    },
+    "nwgi_1k": {
+      "task_name": "benchmark_nwgi",
+      "prompt_mode": "nonthinking",
+      "verdict": "improved",
+      "base": {
+        "accuracy": 0.5234375,
+        "macro_f1": 0.5084485639141004,
+        "parse_failure_rate": 0.046875
+      },
+      "adapter": {
+        "accuracy": 0.609375,
+        "macro_f1": 0.6022650400185118,
+        "parse_failure_rate": 0.0,
+        "confusion": {
+          "negative->negative": 26,
+          "negative->neutral": 1,
+          "neutral->negative": 18,
+          "neutral->neutral": 16,
+          "neutral->positive": 21,
+          "positive->negative": 3,
+          "positive->neutral": 7,
+          "positive->positive": 36
+        }
+      },
+      "delta": {
+        "accuracy": 0.0859375,
+        "macro_f1": 0.09381647610441135,
+        "parse_failure_rate": -0.046875
+      },
+      "source_metrics_path": "outputs/evals/qwen36-27b-nwgi-1k-nonthinking/metrics.json"
+    },
+    "nwgi_10k": {
+      "task_name": "benchmark_nwgi",
+      "prompt_mode": "nonthinking",
+      "verdict": "improved",
+      "base": {
+        "accuracy": 0.5234375,
+        "macro_f1": 0.5084485639141004,
+        "parse_failure_rate": 0.046875
+      },
+      "adapter": {
+        "accuracy": 0.625,
+        "macro_f1": 0.6191212912731899,
+        "parse_failure_rate": 0.0,
+        "confusion": {
+          "negative->negative": 26,
+          "negative->neutral": 1,
+          "neutral->negative": 16,
+          "neutral->neutral": 17,
+          "neutral->positive": 22,
+          "positive->negative": 3,
+          "positive->neutral": 6,
+          "positive->positive": 37
+        }
+      },
+      "delta": {
+        "accuracy": 0.1015625,
+        "macro_f1": 0.1106727273590895,
+        "parse_failure_rate": -0.046875
+      },
+      "source_metrics_path": "outputs/evals/qwen36-27b-nwgi-10k-nonthinking/metrics.json"
+    }
+  },
+  "comparisons": {
+    "public_10k_minus_1k": {
+      "fiqa": {
+        "task": "fiqa",
+        "accuracy_delta_10k_minus_1k": -0.015625,
+        "macro_f1_delta_10k_minus_1k": -0.016178266178266232,
+        "parse_failure_delta_10k_minus_1k": 0.0
+      },
+      "fpb": {
+        "task": "fpb",
+        "accuracy_delta_10k_minus_1k": -0.078125,
+        "macro_f1_delta_10k_minus_1k": -0.042859248031661856,
+        "parse_failure_delta_10k_minus_1k": 0.0
+      },
+      "tfns": {
+        "task": "tfns",
+        "accuracy_delta_10k_minus_1k": -0.0546875,
+        "macro_f1_delta_10k_minus_1k": -0.04490337948684209,
+        "parse_failure_delta_10k_minus_1k": 0.0
+      },
+      "nwgi": {
+        "task": "nwgi",
+        "accuracy_delta_10k_minus_1k": 0.015625,
+        "macro_f1_delta_10k_minus_1k": 0.016856251254678156,
+        "parse_failure_delta_10k_minus_1k": 0.0
+      }
+    },
+    "wrds_10k_minus_1k": {
+      "accuracy_delta_10k_minus_1k": 0.0,
+      "macro_f1_delta_10k_minus_1k": 0.0,
+      "parse_failure_delta_10k_minus_1k": 0.0,
+      "exact_json_match_delta_10k_minus_1k": 0.0050000000000000044,
+      "magnitude_bucket_delta_10k_minus_1k": 0.0050000000000000044
+    }
+  }
+}

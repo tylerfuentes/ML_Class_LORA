@@ -74,6 +74,26 @@ For this repository, the practical plan is:
 - Use WRDS data as the factual grounding layer.
 - Only consider GRPO-style post-training after the supervised adapter trains, saves, and reloads cleanly.
 
+## 5. Qwen thinking-mode future plan
+
+Do not fine-tune for Qwen thinking mode yet.
+
+Thinking-mode-specific training should happen only after:
+
+- base-vs-adapter evaluation exists
+- thinking-vs-non-thinking evaluation exists
+- the current adapter is measured on final-answer quality in both modes
+- we have high-quality reasoning traces
+- those traces are not synthetic filler
+- stripping any `<think>` block does not degrade final-answer accuracy
+
+What this means in practice:
+
+- keep non-thinking evaluation examples focused on final-answer correctness
+- only add reasoning-trace supervision when the traces are trustworthy enough to defend in class or review
+- do not add fake `<think>...</think>` targets just to make the model appear to reason
+- re-run the same base-vs-adapter evaluation after any future thinking-mode fine-tuning work
+
 ## Citation standard for this repo
 
 When adding new research-heavy docs, prefer:

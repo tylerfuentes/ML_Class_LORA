@@ -1,0 +1,130 @@
+{
+  "model_id": "Qwen/Qwen3.6-27B",
+  "adapter_path": "/home/nathanaelguitar/ML_Class_LORA/outputs/qwen36-27b-ibes-baseline",
+  "qwen_thinking_mode": "nonthinking",
+  "temperature": 0.0,
+  "max_new_tokens": 80,
+  "batch_size": 1,
+  "local_files_only": false,
+  "instruction_suffix": "",
+  "thinking_instruction_suffix": "",
+  "nonthinking_instruction_suffix": "",
+  "run_label": "",
+  "tasks": {
+    "benchmark_fpb": {
+      "nonthinking": {
+        "base": {
+          "sample_count": 128,
+          "accuracy": 0.46875,
+          "macro_f1": 0.5229215229215228,
+          "invalid_parse_count": 2,
+          "parse_failure_rate": 0.015625,
+          "format_compliance_rate": 0.984375,
+          "average_output_chars": 340.046875,
+          "average_output_tokens": 62.1953125,
+          "average_latency_seconds": 8.377362075265182,
+          "truncated_output_rate": 0.109375,
+          "contains_think_rate": 0.0,
+          "malformed_think_tag_rate": 0.0,
+          "json_after_reasoning_text_rate": 0.0,
+          "parseable_after_strip_rate": 0.984375,
+          "per_class": {
+            "negative": {
+              "precision": 0.5833333333333334,
+              "recall": 0.7777777777777778,
+              "f1": 0.6666666666666666,
+              "support": 9
+            },
+            "neutral": {
+              "precision": 1.0,
+              "recall": 0.2222222222222222,
+              "f1": 0.3636363636363636,
+              "support": 81
+            },
+            "positive": {
+              "precision": 0.3723404255319149,
+              "recall": 0.9722222222222222,
+              "f1": 0.5384615384615384,
+              "support": 36
+            }
+          },
+          "confusion": {
+            "negative->__invalid__": 1,
+            "negative->negative": 7,
+            "negative->positive": 1,
+            "neutral->__invalid__": 1,
+            "neutral->negative": 4,
+            "neutral->neutral": 18,
+            "neutral->no": 2,
+            "neutral->positive": 58,
+            "positive->negative": 1,
+            "positive->positive": 35
+          },
+          "prompt_mode": "nonthinking",
+          "variant": "base",
+          "used_chat_template": true,
+          "fallback_reasons": [],
+          "chat_template_effective": true
+        },
+        "adapter": {
+          "sample_count": 128,
+          "accuracy": 0.71875,
+          "macro_f1": 0.7553113553113553,
+          "invalid_parse_count": 0,
+          "parse_failure_rate": 0.0,
+          "format_compliance_rate": 1.0,
+          "average_output_chars": 7.6328125,
+          "average_output_tokens": 2.0,
+          "average_latency_seconds": 0.8542394171324759,
+          "truncated_output_rate": 0.0,
+          "contains_think_rate": 0.0,
+          "malformed_think_tag_rate": 0.0,
+          "json_after_reasoning_text_rate": 0.0,
+          "parseable_after_strip_rate": 1.0,
+          "per_class": {
+            "negative": {
+              "precision": 0.75,
+              "recall": 1.0,
+              "f1": 0.8571428571428571,
+              "support": 9
+            },
+            "neutral": {
+              "precision": 1.0,
+              "recall": 0.5662650602409639,
+              "f1": 0.7230769230769232,
+              "support": 83
+            },
+            "positive": {
+              "precision": 0.5217391304347826,
+              "recall": 1.0,
+              "f1": 0.6857142857142856,
+              "support": 36
+            }
+          },
+          "confusion": {
+            "negative->negative": 9,
+            "neutral->negative": 3,
+            "neutral->neutral": 47,
+            "neutral->positive": 33,
+            "positive->positive": 36
+          },
+          "prompt_mode": "nonthinking",
+          "variant": "adapter",
+          "used_chat_template": true,
+          "fallback_reasons": [],
+          "chat_template_effective": true
+        },
+        "delta": {
+          "accuracy": 0.25,
+          "macro_f1": 0.23238983238983246,
+          "parse_failure_rate": -0.015625,
+          "format_compliance_rate": 0.015625,
+          "contains_think_rate": 0.0,
+          "parseable_after_strip_rate": 0.015625
+        },
+        "verdict": "improved"
+      }
+    }
+  },
+  "skipped": []
+}
