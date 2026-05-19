@@ -1,0 +1,4 @@
+event_id,event_date,gvkey,cusip,ticker,permno,label_direction,label_magnitude,join_key_type,join_status
+evt-001,2020-01-15,001234,123456789,ACME,10001,positive,medium,gvkey,matched
+evt-002,2020-01-20,005678,987654321,BRAV,10002,negative,large,gvkey,matched
+evt-003,2020-01-22,009999,111222333,CHAR,10003,neutral,unknown,gvkey,matched

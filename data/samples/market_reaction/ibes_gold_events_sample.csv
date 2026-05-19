@@ -1,0 +1,4 @@
+event_id,event_date,gvkey,cusip,ticker,label_direction,label_magnitude,headline
+evt-001,2020-01-15,001234,123456789,ACME,positive,medium,"Sample positive revision event"
+evt-002,2020-01-20,005678,987654321,BRAV,negative,large,"Sample negative revision event"
+evt-003,2020-01-22,009999,111222333,CHAR,neutral,unknown,"Sample neutral revision event"

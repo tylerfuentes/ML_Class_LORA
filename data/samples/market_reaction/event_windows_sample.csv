@@ -1,0 +1,4 @@
+event_id,event_date,permno,gold_direction_label,adapter_1k_direction_label,adapter_10k_direction_label,raw_return_w_p0_p1,benchmark_return_w_p0_p1,abnormal_return_w_p0_p1,raw_return_w_p0_p3,benchmark_return_w_p0_p3,abnormal_return_w_p0_p3,raw_return_w_p0_p5,benchmark_return_w_p0_p5,abnormal_return_w_p0_p5,raw_return_w_m1_p1,benchmark_return_w_m1_p1,abnormal_return_w_m1_p1
+evt-001,2020-01-15,10001,positive,positive,positive,0.0200,0.0060,0.0140,0.0250,0.0080,0.0170,0.0310,0.0100,0.0210,0.0220,0.0070,0.0150
+evt-002,2020-01-20,10002,negative,negative,neutral,-0.0150,-0.0040,-0.0110,-0.0200,-0.0060,-0.0140,-0.0220,-0.0070,-0.0150,-0.0140,-0.0040,-0.0100
+evt-003,2020-01-22,10003,neutral,neutral,positive,0.0000,0.0005,-0.0005,0.0010,0.0007,0.0003,0.0020,0.0010,0.0010,0.0000,0.0005,-0.0005

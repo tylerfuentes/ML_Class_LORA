@@ -14,9 +14,11 @@ docs/wrds-playwright.md
 scripts/wrds_playwright_session.mjs
 *.csv
 !data/samples/*.csv
+!data/samples/**/*.csv
 *.parquet
 *.jsonl
 !data/samples/*.jsonl
+!data/samples/**/*.jsonl
 **/__pycache__/
 *.pyc
 *.safetensors

@@ -55,6 +55,14 @@ Relevant recent local facts:
   - shared PySpark bronze / silver / gold IBES helpers used by the command scripts
 - `scripts/test_wrds_connection.py`
   - sanity-check direct WRDS Python/Postgres authentication
+- `scripts/market_reaction/check_market_data.py`
+  - validate the expected CRSP/link/benchmark files and columns without loading full datasets
+- `scripts/market_reaction/build_event_panel.py`
+  - validate the event-panel join contract and required schemas
+- `scripts/market_reaction/compute_event_windows.py`
+  - validate requested event-window definitions and expected output columns
+- `scripts/market_reaction/score_label_alignment.py`
+  - validate the planned label-vs-return evaluation contract
 - `training/train_smoke.py`
   - verified one-step QLoRA smoke run
 - `training/train_finance_lora.py`
@@ -74,6 +82,7 @@ Google Drive / WRDS download
 → `data/processed/ibes_lora_baseline/gold`
 → `data/processed/ibes_lora_baseline/jsonl`
 → training
+→ market-reaction validation and planning
 
 Expected raw input path:
 
@@ -112,6 +121,39 @@ Google Drive mirrors:
 7. Validate or evaluate the saved adapter.
 8. Scale to larger gold-derived splits only after the first adapter works.
 
+Current project status:
+
+- do not train more IBES adapters right now
+- the `1k` adapter is the best general finance adapter so far
+- the `10k` adapter is the best structured IBES JSON specialist so far
+- pure IBES scaling is paused
+- the next bottleneck is market-reaction data, not more training
+
+## Market-reaction flow
+
+1. Validate the IBES gold event file shape.
+2. Validate local CRSP daily returns.
+3. Validate the CRSP/Compustat link table.
+4. Validate optional benchmark returns.
+5. Build the schema-aware event-panel contract.
+6. Build the schema-aware event-window contract.
+7. Score label-alignment only after realized-return columns exist.
+
+Expected local market-reaction paths:
+
+- `admin/local/market-reaction/crsp_daily_returns.csv`
+- `admin/local/market-reaction/crsp_compustat_link.csv`
+- `admin/local/market-reaction/market_benchmark_returns.csv`
+- `data/processed/market_reaction/`
+
+Important market-reaction rules:
+
+- market-reaction scripts are schema-aware validators and planning tools first
+- they must not invent data or fabricate joined outputs
+- real WRDS, CRSP, and Compustat files belong in Google Drive or ignored local folders
+- commit only tiny synthetic samples under `data/samples/market_reaction/`
+- no alpha or trading claim is allowed until real backtests exist
+
 ## FinGPT usage
 
 - `external/FinGPT/` is the canonical upstream reference.
@@ -129,12 +171,14 @@ Google Drive mirrors:
 ## Hard rules
 
 - Do not commit WRDS raw or processed data.
+- Do not commit CRSP data or Compustat data.
 - Do not commit browser profiles or cookies.
 - Do not commit model weights or checkpoints.
 - Do not train on all 2.8M IBES rows directly.
 - Do not replace the PySpark data path with a pandas-only path.
 - Do not guess FinGPT APIs; inspect the submodule first.
 - Do not modify the working `.venv` to test Unsloth.
+- Do not start new IBES adapter training until the market-reaction bottleneck is addressed.
 
 ## First commands
 

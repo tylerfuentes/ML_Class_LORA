@@ -1,0 +1,13 @@
+# Example local paths for the market-reaction milestone.
+# These are placeholders only. Do not commit real WRDS, CRSP, or Compustat data.
+
+# If your current IBES gold artifact is parquet, export a CSV/TSV/JSONL view
+# first or run the validators in an environment that can inspect parquet.
+ibes_gold_events: "data/processed/ibes_lora_baseline/gold/ibes_revision_events.csv"
+crsp_daily_returns: "admin/local/market-reaction/crsp_daily_returns.csv"
+crsp_compustat_link: "admin/local/market-reaction/crsp_compustat_link.csv"
+market_benchmark_returns: "admin/local/market-reaction/market_benchmark_returns.csv"
+
+output_event_panel: "data/processed/market_reaction/event_panel.csv"
+output_event_windows: "data/processed/market_reaction/event_windows.csv"
+output_alignment_report: "outputs/market_reaction/alignment_report"
