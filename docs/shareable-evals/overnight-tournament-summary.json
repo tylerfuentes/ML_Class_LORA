@@ -1,0 +1,103 @@
+{
+  "shareable_note": "This file contains only aggregate overnight-tournament metrics and conclusions. Raw run directories, predictions, adapters, checkpoints, and other large artifacts remain local and ignored.",
+  "tournament_window": {
+    "started_utc": "2026-05-20T03:00:17.302051+00:00",
+    "completed_utc": "2026-05-21T00:36:35.993872+00:00"
+  },
+  "stop_rule_outcome": {
+    "stopped_after_candidate": "balanced_ibes_10k",
+    "reason": "Stopped after balanced_ibes_10k: it beat the 1k adapter on at least three public benchmarks while preserving IBES performance."
+  },
+  "baseline_roles": {
+    "adapter_1k": "Best general finance adapter before the overnight tournament.",
+    "adapter_10k": "Best narrow IBES structured JSON specialist before the overnight tournament."
+  },
+  "candidates": {
+    "high_quality_ibes_4k": {
+      "status": "completed",
+      "train_runtime_seconds": 15770.4965,
+      "train_loss": 0.20275279426574708,
+      "eval_loss": 0.22236816585063934,
+      "public_wins_vs_1k": 1,
+      "public_wins_vs_10k": 1,
+      "public_regressions_vs_1k": 3,
+      "wrds_holdout": {
+        "accuracy": 1.0,
+        "macro_f1": 1.0,
+        "parse_failure_rate": 0.0,
+        "exact_json_match_rate": 0.735,
+        "magnitude_bucket_accuracy": 0.735
+      },
+      "public_benchmarks": {
+        "fiqa": {
+          "accuracy": 0.8671875,
+          "macro_f1": 0.6850984585883914,
+          "parse_failure_rate": 0.0
+        },
+        "fpb": {
+          "accuracy": 0.59375,
+          "macro_f1": 0.6438367871939011,
+          "parse_failure_rate": 0.0
+        },
+        "tfns": {
+          "accuracy": 0.6796875,
+          "macro_f1": 0.6878234398782345,
+          "parse_failure_rate": 0.0
+        },
+        "nwgi": {
+          "accuracy": 0.5859375,
+          "macro_f1": 0.5647005263906673,
+          "parse_failure_rate": 0.0
+        }
+      },
+      "interpretation": "Cleaner smaller data preserved direction classification but severely regressed IBES exact JSON and magnitude fidelity, and it still lost on most public benchmarks versus the 1k adapter."
+    },
+    "balanced_ibes_10k": {
+      "status": "completed",
+      "train_runtime_seconds": 38986.6255,
+      "train_loss": 0.16629858322143554,
+      "eval_loss": 0.14143627882003784,
+      "public_wins_vs_1k": 3,
+      "public_wins_vs_10k": 4,
+      "public_regressions_vs_1k": 1,
+      "wrds_holdout": {
+        "accuracy": 1.0,
+        "macro_f1": 1.0,
+        "parse_failure_rate": 0.0,
+        "exact_json_match_rate": 0.997,
+        "magnitude_bucket_accuracy": 0.997
+      },
+      "public_benchmarks": {
+        "fiqa": {
+          "accuracy": 0.828125,
+          "macro_f1": 0.6721380471380471,
+          "parse_failure_rate": 0.0
+        },
+        "fpb": {
+          "accuracy": 0.7265625,
+          "macro_f1": 0.7857624831309041,
+          "parse_failure_rate": 0.0
+        },
+        "tfns": {
+          "accuracy": 0.75,
+          "macro_f1": 0.7465219421101774,
+          "parse_failure_rate": 0.0
+        },
+        "nwgi": {
+          "accuracy": 0.6484375,
+          "macro_f1": 0.6486786205887329,
+          "parse_failure_rate": 0.0
+        }
+      },
+      "interpretation": "Best overnight candidate. It preserved IBES structured performance while beating the 1k adapter on FPB, TFNS, and NWGI, with only a small FiQA regression."
+    }
+  },
+  "decision_summary": {
+    "best_structured_ibes_model_overall": "10k adapter remains the narrowest IBES JSON specialist overall.",
+    "best_public_finance_generalization_from_tournament": "balanced_ibes_10k",
+    "best_next_event_reasoning_candidate": "balanced_ibes_10k",
+    "pure_ibes_scaling_justified_next": false,
+    "mixed_finance_followup_justified": true,
+    "remaining_market_reaction_blocker": "Formal CRSP/Compustat link table is still missing."
+  }
+}
