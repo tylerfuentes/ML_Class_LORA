@@ -28,12 +28,12 @@ ssh-ed25519
 
 ## Tyler Fuentes
 
-NetID: ``
+NetID: `tf289`
 
 Public key:
 
 ```text
-ssh-ed25519 
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII7CHD7r+QuNuAAvMJIBik4FUxhnLA/FYWjA6yzy4Jnm tf289@cornell.edu
 ```
 
 ## Richie Gray
