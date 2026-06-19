@@ -326,6 +326,11 @@ def parse_wrds_prediction(text: str) -> dict[str, Any]:
         for key in WRDS_OUTPUT_KEYS:
             if key in parsed_json:
                 structured[key] = parsed_json[key]
+        # The WRDS-500k pipeline's gold schema uses "direction" instead of
+        # "direction_label" (the older IBES-baseline schema this function
+        # was originally written for). Accept either key name.
+        if "direction_label" not in structured and "direction" in parsed_json:
+            structured["direction_label"] = parsed_json["direction"]
 
     if "direction_label" not in structured:
         direction = normalize_label_text(final_text)
@@ -483,7 +488,11 @@ def load_jsonl_examples(path: Path, dataset_name: str) -> list[Example]:
             raw = json.loads(line)
             gold_output = raw["output"]
             gold_structured = json.loads(gold_output) if gold_output.strip().startswith("{") else None
-            target_label = gold_structured.get("direction_label") if gold_structured else normalize_label_text(gold_output)
+            if gold_structured is not None and "direction_label" not in gold_structured and "direction" in gold_structured:
+                gold_structured["direction_label"] = gold_structured["direction"]
+            target_label = (
+                gold_structured.get("direction_label") if gold_structured else normalize_label_text(gold_output)
+            )
             example_id = raw.get("event_id") or raw.get("id") or f"{dataset_name}-{idx}"
             rows.append(
                 Example(
