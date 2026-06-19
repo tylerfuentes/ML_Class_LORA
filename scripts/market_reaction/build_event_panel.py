@@ -17,10 +17,13 @@ if str(SCRIPT_DIR) not in sys.path:
 
 from common import (
     CRSP_DAILY_ALIASES,
+    CRSP_DAILY_IDENTIFIER_ALIASES,
     CRSP_LINK_ALIASES,
+    CRSP_STOCK_HEADER_ALIASES,
     DEFAULT_BENCHMARK_RETURNS,
     DEFAULT_CRSP_DAILY_RETURNS,
     DEFAULT_CRSP_LINK,
+    DEFAULT_CRSP_STOCK_HEADER,
     DEFAULT_EVENT_PANEL,
     DEFAULT_IBES_GOLD_EVENTS,
     IBES_IDENTIFIER_ALIASES,
@@ -55,6 +58,12 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=DEFAULT_CRSP_LINK,
         help="Path to the CRSP/Compustat link-table export.",
+    )
+    parser.add_argument(
+        "--crsp-stock-header",
+        type=Path,
+        default=DEFAULT_CRSP_STOCK_HEADER,
+        help="Optional CRSP stock-header extract for non-CCM fallback joins.",
     )
     parser.add_argument(
         "--market-benchmark-returns",
@@ -115,14 +124,36 @@ def validate_optional_benchmark(path: Path, sample_rows: int) -> None:
     print(f"{status_prefix('PASS')} optional benchmark file is present and can be validated separately.")
 
 
-def print_join_plan(output_path: Path) -> None:
+def validate_optional_dataset(label: str, path: Path, aliases: dict[str, tuple[str, ...]], sample_rows: int) -> dict[str, str]:
+    result = inspect_tabular_file(path, sample_rows=sample_rows)
+    print_inspection(label, result)
+    if not result.exists:
+        print(f"{status_prefix('WARN')} optional dataset missing: {path}")
+        return {}
+    mapping = require_columns(result.columns, aliases, label)
+    print(f"{status_prefix('PASS')} optional columns present: {mapping}")
+    return mapping
+
+
+def fallback_identifier_mapping(daily_columns: list[str]) -> dict[str, str]:
+    resolved, _ = resolve_aliases(daily_columns, CRSP_DAILY_IDENTIFIER_ALIASES)
+    return resolved
+
+
+def print_join_plan(output_path: Path, has_ccm: bool, has_daily_id_fallback: bool, has_stock_header: bool) -> None:
     print(f"{status_prefix('INFO')} planned output path: {output_path}")
     print(f"{status_prefix('INFO')} intended join logic:")
     print("  1. Normalize one row per IBES event with canonical event_id and event_date.")
-    print("  2. Prefer gvkey -> link table -> permno when gvkey exists on the event data.")
-    print("  3. If gvkey is absent but cusip exists, require an explicit enrichment step before production joins.")
-    print("  4. Restrict link matches to rows where event_date falls within [linkdt, linkenddt].")
-    print("  5. Carry join_key_type and join_status into the event panel for auditability.")
+    if has_ccm:
+        print("  2. Prefer gvkey -> CRSP/Compustat link -> permno when gvkey exists on the event data.")
+        print("  3. Restrict link matches to rows where event_date falls within [linkdt, linkenddt].")
+    else:
+        print("  2. CRSP/Compustat link is unavailable, so use fallback mapping in diagnostic mode.")
+    if has_daily_id_fallback:
+        print("  4. Fallback A: match IBES cusip/cusip8 against CRSP CUSIP or NCUSIP around the event date.")
+    if has_stock_header:
+        print("  5. Fallback B: use ticker/name history from CRSP stock header to audit or disambiguate joins.")
+    print("  6. Carry join_key_type, join_method, join_confidence, and join_status into the event panel.")
     print(f"{status_prefix('INFO')} expected event-panel columns:")
     print("  - event_id")
     print("  - event_date")
@@ -133,6 +164,8 @@ def print_join_plan(output_path: Path) -> None:
     print("  - label_direction")
     print("  - label_magnitude")
     print("  - join_key_type")
+    print("  - join_method")
+    print("  - join_confidence")
     print("  - join_status")
     print("  - crsp_daily_file")
     print(
@@ -144,17 +177,49 @@ def print_join_plan(output_path: Path) -> None:
 def main() -> int:
     args = parse_args()
     try:
-        validate_ibes_events(args.ibes_gold_events, args.sample_rows)
+        ibes_mapping = validate_ibes_events(args.ibes_gold_events, args.sample_rows)
         crsp_mapping = validate_required_dataset(
             "CRSP daily returns", args.crsp_daily_returns, CRSP_DAILY_ALIASES, args.sample_rows
         )
-        link_mapping = validate_required_dataset(
-            "CRSP/Compustat link", args.crsp_compustat_link, CRSP_LINK_ALIASES, args.sample_rows
+        daily_result = inspect_tabular_file(args.crsp_daily_returns, sample_rows=args.sample_rows)
+        daily_id_mapping = fallback_identifier_mapping(daily_result.columns)
+        link_result = inspect_tabular_file(args.crsp_compustat_link, sample_rows=args.sample_rows)
+        print_inspection("CRSP/Compustat link", link_result)
+        link_mapping: dict[str, str] = {}
+        if link_result.exists:
+            link_mapping = require_columns(link_result.columns, CRSP_LINK_ALIASES, "CRSP/Compustat link")
+        else:
+            print(f"{status_prefix('WARN')} CRSP/Compustat link is unavailable: {args.crsp_compustat_link}")
+        stock_header_mapping = validate_optional_dataset(
+            "CRSP stock header", args.crsp_stock_header, CRSP_STOCK_HEADER_ALIASES, args.sample_rows
         )
         print(f"{status_prefix('PASS')} CRSP daily returns columns: {crsp_mapping}")
-        print(f"{status_prefix('PASS')} CRSP/Compustat link columns: {link_mapping}")
+        if daily_id_mapping:
+            print(f"{status_prefix('PASS')} CRSP daily identifier fallback columns: {daily_id_mapping}")
+        if link_mapping:
+            print(f"{status_prefix('PASS')} CRSP/Compustat link columns: {link_mapping}")
+        elif not daily_id_mapping:
+            raise ValidationIssue(
+                "Missing CRSP/Compustat link and no fallback identifier columns found in the CRSP daily file."
+            )
+        elif "cusip" not in ibes_mapping and "ticker" not in ibes_mapping:
+            raise ValidationIssue(
+                "Fallback join mode requires at least one IBES identifier from {cusip, ticker}."
+            )
+        else:
+            print(
+                f"{status_prefix('WARN')} proceeding in fallback join mode only. Results will be less reliable "
+                "than a gvkey->CCM join and should be treated as diagnostic until the link table exists."
+            )
+        if stock_header_mapping:
+            print(f"{status_prefix('PASS')} CRSP stock header columns: {stock_header_mapping}")
         validate_optional_benchmark(args.market_benchmark_returns, args.sample_rows)
-        print_join_plan(args.output_path)
+        print_join_plan(
+            args.output_path,
+            has_ccm=bool(link_mapping),
+            has_daily_id_fallback=bool(daily_id_mapping),
+            has_stock_header=bool(stock_header_mapping),
+        )
         return 0
     except ValidationIssue as exc:
         print(f"{status_prefix('FAIL')} {exc}")

@@ -1,0 +1,50 @@
+pipeline:
+  name: wrds_qwen_pipeline
+  seed: 42
+  train_split_fraction: 0.90
+  val_split_fraction: 0.05
+  max_train_examples: 0
+  max_train_eval_examples: 1000
+  max_val_examples: 0
+  max_test_examples: 0
+  sample_100_examples: 100
+  neutral_abs_delta: 0.005
+  reaction_neutral_threshold: 0.01
+  reaction_large_threshold: 0.05
+  benchmark_column: vwretd
+  benchmark_name: crsp_vwretd
+  windows:
+    - "0:1"
+    - "0:3"
+    - "0:5"
+    - "-1:1"
+  model_id: Qwen/Qwen3.6-27B
+  local_files_only: true
+  smoke:
+    epochs: 0.05
+    max_total_examples: 100
+    per_device_train_batch_size: 1
+    gradient_accumulation_steps: 4
+    save_steps: 5
+    logging_steps: 1
+    max_seq_length: 2048
+    output_dir: outputs/wrds_qwen_pipeline/smoke
+  overnight:
+    epochs: 0.20
+    per_device_train_batch_size: 1
+    gradient_accumulation_steps: 16
+    eval_steps: 500
+    save_steps: 500
+    logging_steps: 25
+    max_seq_length: 2048
+    lr: 0.0002
+    output_dir_root: outputs/wrds_qwen_pipeline/train
+data:
+  raw_ibes_csv: admin/local/wrds-downloads/tr_ibes_11289435.csv
+  raw_crsp_presence_csv: /home/nathanaelguitar/Downloads/CRSP-1980-2024.csv
+  raw_crsp_daily_zip: admin/local/market-reaction/crsp_daily_returns_with_ids_1995-12-29_2006-01-16.zip
+  raw_crsp_stock_header_csv: admin/local/market-reaction/crsp_stock_header_full.csv
+  raw_market_benchmark_csv: admin/local/market-reaction/market_benchmark_returns_1995-12-29_2006-01-16.csv
+  processed_root: data/processed/wrds_qwen_pipeline
+  logs_root: logs/wrds_qwen_pipeline
+  docs_summary_path: docs/overnight_run_summary.md

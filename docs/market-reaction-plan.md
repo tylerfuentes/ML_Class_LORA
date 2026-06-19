@@ -32,7 +32,8 @@ Purpose:
 
 Expected local path:
 
-- `admin/local/market-reaction/crsp_daily_returns.csv`
+- preferred: `admin/local/market-reaction/crsp_daily_returns_with_ids_1995-12-29_2006-01-16.zip`
+- accepted fallback: `admin/local/market-reaction/crsp_daily_returns.csv`
 
 Expected columns:
 
@@ -42,6 +43,13 @@ Expected columns:
 - `prc`
 - `shrout`
 - `vol`
+
+Preferred extra columns for fallback identifier mapping:
+
+- `cusip`
+- `ncusip`
+- `ticker`
+- `comnam`
 
 ### 3. CRSP/Compustat link table
 
@@ -62,7 +70,32 @@ Expected columns:
 - `linkdt`
 - `linkenddt`
 
-### 4. Market benchmark returns
+Current status:
+
+- still blocked in the current Cornell WRDS entitlement because the `crsp_m_ccm` query form is not available
+- the pipeline must therefore support a lower-confidence non-CCM fallback path until a real link table arrives
+
+### 4. CRSP stock header / name history
+
+Purpose:
+
+- fallback identifier mapping and audit trail when the formal CCM link table is unavailable
+
+Expected local path:
+
+- `admin/local/market-reaction/crsp_stock_header_full.csv`
+
+Expected columns:
+
+- `permno`
+- `permco`
+- `cusip`
+- `htick`
+- `hcomnam`
+- `begdat`
+- `enddat`
+
+### 5. Market benchmark returns
 
 Purpose:
 
@@ -70,7 +103,7 @@ Purpose:
 
 Expected local path:
 
-- `admin/local/market-reaction/market_benchmark_returns.csv`
+- `admin/local/market-reaction/market_benchmark_returns_1995-12-29_2006-01-16.csv`
 
 Expected columns:
 
@@ -84,13 +117,22 @@ Accepted aliases in the schema tools include common names such as `market_return
 Join priority:
 
 1. `gvkey -> CRSP/Compustat link -> permno`
-2. `cusip` only as a temporary fallback that still requires explicit enrichment logic
-3. `ticker` only as a diagnostic fallback, not a production-safe join
+2. `cusip` or `cusip8` against CRSP `cusip` or `ncusip` from the enriched daily file
+3. `ticker` against CRSP `ticker` or stock-header `htick`, with date-range checks
+4. company-name matching only as an audit aid, not as a primary production join
 
 Date logic:
 
 - the event date must fall within the link interval `[linkdt, linkenddt]`
 - if multiple link rows match, the eventual implementation must make the tie-break explicit and auditable
+- for non-CCM fallback joins, date-aware filters should use stock-header `begdat` / `enddat` where available
+
+Join audit fields to carry forward:
+
+- `join_key_type`
+- `join_method`
+- `join_confidence`
+- `join_status`
 
 ## Event-window definitions
 
@@ -143,6 +185,8 @@ Expected columns:
 - `label_direction`
 - `label_magnitude`
 - `join_key_type`
+- `join_method`
+- `join_confidence`
 - `join_status`
 
 ### Event-window panel
@@ -199,7 +243,7 @@ Expected contents:
 ## Known limitations
 
 - without CRSP data, the pipeline can only validate schemas and paths
-- without a reliable `gvkey` or equivalent mapping path, joins into `permno` remain blocked
+- without the real CCM link table, joins into `permno` are fallback-only and less reliable
 - benchmark-adjusted returns are unavailable until benchmark data exists locally
 - current scripts are contract validators, not final research-grade backtests
 - no alpha or trading claim is justified from sentiment classification metrics alone

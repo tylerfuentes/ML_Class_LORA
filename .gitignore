@@ -1,12 +1,21 @@
 .env
 .venv/
+.ipynb_checkpoints/
 outputs/
 checkpoints/
+adapters/
 runs/
 wandb/
 .cache/
 logs/
 admin/local/
+data/*
+!data/baseline/
+!data/baseline/**
+!data/public/
+!data/public/**
+!data/samples/
+!data/samples/**
 data/processed/
 docs/local/
 config/*.local.yaml
@@ -19,6 +28,8 @@ scripts/wrds_playwright_session.mjs
 *.jsonl
 !data/samples/*.jsonl
 !data/samples/**/*.jsonl
+!data/public/*.jsonl
+!data/public/**/*.jsonl
 **/__pycache__/
 *.pyc
 *.safetensors
@@ -27,3 +38,6 @@ scripts/wrds_playwright_session.mjs
 *.pth
 *.gguf
 *.log
+*.zip
+backups/
+unsloth_compiled_cache/

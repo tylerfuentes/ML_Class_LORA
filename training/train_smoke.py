@@ -2,11 +2,13 @@
 import argparse
 import os
 from datetime import datetime
+from pathlib import Path
 
 import torch
 from transformers import DataCollatorForLanguageModeling, Trainer, TrainingArguments
 
 from common import ModelConfig, build_tokenized_dataset, make_model_and_tokenizer, write_json
+from safety import ensure_safe_output_dir, training_target_summary, validate_resume_checkpoint
 
 
 def smoke_examples() -> list[dict]:
@@ -41,6 +43,16 @@ def main():
     parser.add_argument("--use-qlora", action="store_true", default=True)
     parser.add_argument("--disable-qlora", action="store_true")
     parser.add_argument("--local-files-only", action="store_true", default=False)
+    parser.add_argument(
+        "--resume-from-checkpoint",
+        help="Resume from a Trainer checkpoint directory such as checkpoint-500.",
+    )
+    parser.add_argument(
+        "--allow-overwrite-output-dir",
+        action="store_true",
+        default=False,
+        help="Allow writing into an output directory that already contains adapter artifacts.",
+    )
     args = parser.parse_args()
 
     cfg = ModelConfig(
@@ -52,15 +64,32 @@ def main():
         use_qlora=args.use_qlora and not args.disable_qlora,
         local_files_only=args.local_files_only,
     )
+    output_dir = ensure_safe_output_dir(
+        args.output_dir,
+        resume_from_checkpoint=args.resume_from_checkpoint,
+        allow_overwrite_output_dir=args.allow_overwrite_output_dir,
+    )
+    resume_checkpoint = (
+        validate_resume_checkpoint(args.resume_from_checkpoint)
+        if args.resume_from_checkpoint
+        else None
+    )
 
-    os.makedirs(args.output_dir, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
+    print(
+        training_target_summary(
+            model_id=cfg.model_id,
+            output_dir=output_dir,
+            resume_from_checkpoint=resume_checkpoint,
+        )
+    )
     model, tokenizer = make_model_and_tokenizer(cfg)
     model.print_trainable_parameters()
     dataset = build_tokenized_dataset(smoke_examples(), cfg.max_seq_length, tokenizer)
     collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
 
     training_args = TrainingArguments(
-        output_dir=args.output_dir,
+        output_dir=str(output_dir),
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
         learning_rate=2e-4,
@@ -84,14 +113,18 @@ def main():
     )
 
     start = datetime.utcnow().isoformat()
-    train_result = trainer.train()
-    model.save_pretrained(args.output_dir)
-    tokenizer.save_pretrained(args.output_dir)
+    train_result = trainer.train(
+        resume_from_checkpoint=str(resume_checkpoint) if resume_checkpoint is not None else None
+    )
+    model.save_pretrained(output_dir)
+    tokenizer.save_pretrained(output_dir)
 
     metrics = {
         "start_utc": start,
         "end_utc": datetime.utcnow().isoformat(),
         "model_id": cfg.model_id,
+        "resume_from_checkpoint": str(resume_checkpoint) if resume_checkpoint is not None else None,
+        "output_dir": str(output_dir),
         "use_qlora": cfg.use_qlora,
         "max_steps": args.max_steps,
         "train_runtime": train_result.metrics.get("train_runtime"),
@@ -103,7 +136,7 @@ def main():
             torch.cuda.max_memory_reserved() / (1024 ** 3) if torch.cuda.is_available() else None
         ),
     }
-    write_json(os.path.join(args.output_dir, "smoke_metrics.json"), metrics)
+    write_json(str(Path(output_dir) / "smoke_metrics.json"), metrics)
     print(metrics)
 
 

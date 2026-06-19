@@ -5,22 +5,25 @@ from __future__ import annotations
 
 import csv
 import json
+import io
+import zipfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
 
 DEFAULT_IBES_GOLD_EVENTS = Path("data/processed/ibes_lora_baseline/gold/ibes_revision_events.csv")
-DEFAULT_CRSP_DAILY_RETURNS = Path("admin/local/market-reaction/crsp_daily_returns.csv")
+DEFAULT_CRSP_DAILY_RETURNS = Path("admin/local/market-reaction/crsp_daily_returns_with_ids_1995-12-29_2006-01-16.zip")
 DEFAULT_CRSP_LINK = Path("admin/local/market-reaction/crsp_compustat_link.csv")
-DEFAULT_BENCHMARK_RETURNS = Path("admin/local/market-reaction/market_benchmark_returns.csv")
+DEFAULT_BENCHMARK_RETURNS = Path("admin/local/market-reaction/market_benchmark_returns_1995-12-29_2006-01-16.csv")
+DEFAULT_CRSP_STOCK_HEADER = Path("admin/local/market-reaction/crsp_stock_header_full.csv")
 DEFAULT_EVENT_PANEL = Path("data/processed/market_reaction/event_panel.csv")
 DEFAULT_EVENT_WINDOWS = Path("data/processed/market_reaction/event_windows.csv")
 DEFAULT_ALIGNMENT_REPORT = Path("outputs/market_reaction/alignment_report")
 
 WINDOW_DEFAULTS = ["0:1", "0:3", "0:5", "-1:1"]
 
-SUPPORTED_TABULAR_EXTENSIONS = {".csv", ".tsv", ".jsonl", ".ndjson"}
+SUPPORTED_TABULAR_EXTENSIONS = {".csv", ".tsv", ".jsonl", ".ndjson", ".zip"}
 
 IBES_REQUIRED_ALIASES = {
     "event_id": ("event_id", "id", "example_id"),
@@ -44,6 +47,13 @@ CRSP_DAILY_ALIASES = {
     "vol": ("vol", "volume"),
 }
 
+CRSP_DAILY_IDENTIFIER_ALIASES = {
+    "cusip": ("cusip",),
+    "ncusip": ("ncusip",),
+    "ticker": ("ticker", "htick"),
+    "company_name": ("comnam", "hcomnam"),
+}
+
 CRSP_LINK_ALIASES = {
     "gvkey": ("gvkey",),
     "permno": ("permno",),
@@ -51,6 +61,16 @@ CRSP_LINK_ALIASES = {
     "linkprim": ("linkprim",),
     "linkdt": ("linkdt", "link_start_date"),
     "linkenddt": ("linkenddt", "link_end_date"),
+}
+
+CRSP_STOCK_HEADER_ALIASES = {
+    "permno": ("permno",),
+    "permco": ("permco",),
+    "cusip": ("cusip",),
+    "htick": ("htick",),
+    "hcomnam": ("hcomnam",),
+    "begdat": ("begdat",),
+    "enddat": ("enddat",),
 }
 
 BENCHMARK_ALIASES = {
@@ -115,7 +135,7 @@ def format_bytes(size: int | None) -> str:
 
 def detect_format(path: Path) -> str:
     suffix = path.suffix.lower()
-    if suffix in {".csv", ".tsv", ".jsonl", ".ndjson"}:
+    if suffix in {".csv", ".tsv", ".jsonl", ".ndjson", ".zip"}:
         return suffix.lstrip(".")
     if suffix == ".parquet":
         raise ValidationIssue(
@@ -154,6 +174,29 @@ def inspect_tabular_file(path: Path, sample_rows: int = 3) -> InspectionResult:
             rows: list[dict[str, str]] = []
             for _, row in zip(range(sample_rows), reader):
                 rows.append({key: value for key, value in row.items() if key is not None})
+        notes.append(f"delimiter={repr(delimiter)}")
+        return InspectionResult(path, True, file_format, size_bytes, columns, rows, notes)
+
+    if file_format == "zip":
+        with zipfile.ZipFile(path) as archive:
+            names = [name for name in archive.namelist() if not name.endswith("/")]
+            if not names:
+                raise ValidationIssue(f"No files found inside zip archive: {path}")
+            member_name = next(
+                (name for name in names if Path(name).suffix.lower() in {".csv", ".tsv"}),
+                names[0],
+            )
+            with archive.open(member_name) as raw_handle:
+                text_handle = io.TextIOWrapper(raw_handle, encoding="utf-8", newline="")
+                preface = text_handle.read(8192)
+                text_handle.seek(0)
+                delimiter = "\t" if member_name.lower().endswith(".tsv") else sniff_delimiter(preface)
+                reader = csv.DictReader(text_handle, delimiter=delimiter)
+                columns = reader.fieldnames or []
+                rows = []
+                for _, row in zip(range(sample_rows), reader):
+                    rows.append({key: value for key, value in row.items() if key is not None})
+        notes.append(f"zip_member={member_name}")
         notes.append(f"delimiter={repr(delimiter)}")
         return InspectionResult(path, True, file_format, size_bytes, columns, rows, notes)
 
@@ -250,4 +293,3 @@ def print_inspection(label: str, result: InspectionResult) -> None:
     print(f"{status_prefix('INFO')} columns={', '.join(result.columns)}")
     if result.sample_rows:
         print(f"{status_prefix('INFO')} sample_rows={json.dumps(result.sample_rows, indent=2)}")
-

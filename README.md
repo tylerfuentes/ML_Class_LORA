@@ -55,13 +55,76 @@ Training and data integration notes now live in:
 
 - `AGENTS.md`
 - `docs/agent-workflow.md`
+- `docs/adapter-lifecycle.md`
 - `docs/training-setup.md`
 - `docs/fingpt-integration.md`
 - `docs/fingpt-conversion.md`
 - `docs/wrds-data-setup.md`
 - `docs/sources.md`
+- `docs/eval-findings.md`
+- `docs/model-selection.md`
+- `docs/market-reaction-plan.md`
+- `docs/classmate-data-requests.md`
 
-The next project step is building clean event-level finance datasets and then comparing base Qwen vs a small finance adapter.
+The current project step is not new training. The current project step is reconciling the completed `1k` and `10k` adapter results with a downstream market-reaction milestone.
+
+Current working model selection:
+
+- `1k` adapter: best general finance adapter so far
+- `10k` adapter: best structured IBES JSON specialist so far
+- no `50k` training yet
+
+The next project step is building the event-to-market-reaction layer with CRSP daily returns, the CRSP/Compustat link table, and market benchmark returns if available.
+
+## Adapter lifecycle quick commands
+
+Check GPU memory before loading a model:
+
+```bash
+nvidia-smi
+```
+
+Smoke-test base model plus adapter load:
+
+```bash
+.venv/bin/python scripts/adapter_lifecycle_check.py \
+  --base-model Qwen/Qwen3.6-27B \
+  --adapter-path outputs/qwen36-27b-ibes-baseline
+```
+
+Smoke-test full unload / cleanup flow:
+
+```bash
+.venv/bin/python scripts/adapter_lifecycle_check.py \
+  --base-model Qwen/Qwen3.6-27B \
+  --adapter-path outputs/qwen36-27b-ibes-10k-controlled/checkpoint-500
+```
+
+Check whether a Trainer checkpoint is safe to resume:
+
+```bash
+.venv/bin/python scripts/check_resume_safety.py \
+  --resume-from-checkpoint outputs/qwen36-27b-ibes-10k-controlled/checkpoint-500 \
+  --output-dir outputs/qwen36-27b-ibes-10k-controlled
+```
+
+Resume training from a known checkpoint:
+
+```bash
+.venv/bin/python training/train_finance_lora.py \
+  --model-id Qwen/Qwen3.6-27B \
+  --train-file data/processed/ibes_lora_baseline/jsonl/baseline_10k/train.jsonl \
+  --eval-file data/processed/ibes_lora_baseline/jsonl/baseline_10k/eval.jsonl \
+  --test-file data/processed/ibes_lora_baseline/jsonl/baseline_10k/holdout.jsonl \
+  --output-dir outputs/qwen36-27b-ibes-10k-controlled \
+  --resume-from-checkpoint outputs/qwen36-27b-ibes-10k-controlled/checkpoint-500
+```
+
+If you intentionally want to write into an output directory that already contains adapter artifacts, add:
+
+```bash
+--allow-overwrite-output-dir
+```
 
 ## Data storage rules
 

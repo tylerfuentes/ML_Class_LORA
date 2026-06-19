@@ -3,6 +3,7 @@ import argparse
 import math
 import os
 from datetime import UTC, datetime
+from pathlib import Path
 
 import torch
 from transformers import DataCollatorForLanguageModeling, Trainer, TrainingArguments
@@ -14,6 +15,7 @@ from common import (
     make_model_and_tokenizer,
     write_json,
 )
+from safety import ensure_safe_output_dir, training_target_summary, validate_resume_checkpoint
 
 
 def main():
@@ -30,12 +32,28 @@ def main():
     parser.add_argument("--gradient-accumulation-steps", type=int, default=4)
     parser.add_argument("--save-steps", type=int, default=25)
     parser.add_argument("--logging-steps", type=int, default=1)
+    parser.add_argument(
+        "--eval-steps",
+        type=int,
+        default=0,
+        help="Run trainer evaluation every N steps. Use 0 to tie eval cadence to save_steps.",
+    )
     parser.add_argument("--lora-r", type=int, default=16)
     parser.add_argument("--lora-alpha", type=int, default=32)
     parser.add_argument("--lora-dropout", type=float, default=0.05)
     parser.add_argument("--use-qlora", action="store_true", default=True)
     parser.add_argument("--disable-qlora", action="store_true")
     parser.add_argument("--local-files-only", action="store_true", default=False)
+    parser.add_argument(
+        "--resume-from-checkpoint",
+        help="Resume from a Trainer checkpoint directory such as checkpoint-500.",
+    )
+    parser.add_argument(
+        "--allow-overwrite-output-dir",
+        action="store_true",
+        default=False,
+        help="Allow writing into an output directory that already contains adapter artifacts.",
+    )
     parser.add_argument(
         "--max-total-examples",
         type=int,
@@ -53,6 +71,16 @@ def main():
         use_qlora=args.use_qlora and not args.disable_qlora,
         local_files_only=args.local_files_only,
     )
+    output_dir = ensure_safe_output_dir(
+        args.output_dir,
+        resume_from_checkpoint=args.resume_from_checkpoint,
+        allow_overwrite_output_dir=args.allow_overwrite_output_dir,
+    )
+    resume_checkpoint = (
+        validate_resume_checkpoint(args.resume_from_checkpoint)
+        if args.resume_from_checkpoint
+        else None
+    )
 
     train_examples = load_jsonl_examples(args.train_file)
     eval_examples = load_jsonl_examples(args.eval_file) if args.eval_file else []
@@ -65,7 +93,14 @@ def main():
             "Trim the dataset or set --max-total-examples 0 to override."
         )
 
-    os.makedirs(args.output_dir, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
+    print(
+        training_target_summary(
+            model_id=cfg.model_id,
+            output_dir=output_dir,
+            resume_from_checkpoint=resume_checkpoint,
+        )
+    )
     model, tokenizer = make_model_and_tokenizer(cfg)
     model.print_trainable_parameters()
     train_dataset = build_tokenized_dataset(train_examples, cfg.max_seq_length, tokenizer)
@@ -80,7 +115,7 @@ def main():
     max_steps = max(1, math.ceil(len(train_dataset) * args.epochs / effective_batch_size))
 
     training_args = TrainingArguments(
-        output_dir=args.output_dir,
+        output_dir=str(output_dir),
         per_device_train_batch_size=args.per_device_train_batch_size,
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         learning_rate=args.lr,
@@ -95,7 +130,7 @@ def main():
         dataloader_num_workers=0,
         optim="paged_adamw_8bit" if cfg.use_qlora else "adamw_torch",
         eval_strategy="steps" if eval_dataset is not None else "no",
-        eval_steps=args.save_steps if eval_dataset is not None else None,
+        eval_steps=(args.eval_steps or args.save_steps) if eval_dataset is not None else None,
     )
 
     trainer = Trainer(
@@ -107,15 +142,19 @@ def main():
     )
 
     start = datetime.now(UTC).isoformat()
-    result = trainer.train()
+    result = trainer.train(
+        resume_from_checkpoint=str(resume_checkpoint) if resume_checkpoint is not None else None
+    )
     eval_metrics = trainer.evaluate() if eval_dataset is not None else {}
-    model.save_pretrained(args.output_dir)
-    tokenizer.save_pretrained(args.output_dir)
+    model.save_pretrained(output_dir)
+    tokenizer.save_pretrained(output_dir)
 
     run_summary = {
         "start_utc": start,
         "end_utc": datetime.now(UTC).isoformat(),
         "model_id": cfg.model_id,
+        "resume_from_checkpoint": str(resume_checkpoint) if resume_checkpoint is not None else None,
+        "output_dir": str(output_dir),
         "train_file": os.path.abspath(args.train_file),
         "eval_file": os.path.abspath(args.eval_file) if args.eval_file else None,
         "test_file": os.path.abspath(args.test_file) if args.test_file else None,
@@ -136,7 +175,7 @@ def main():
             torch.cuda.max_memory_reserved() / (1024 ** 3) if torch.cuda.is_available() else None
         ),
     }
-    write_json(os.path.join(args.output_dir, "run_summary.json"), run_summary)
+    write_json(str(Path(output_dir) / "run_summary.json"), run_summary)
     print(run_summary)
 
 

@@ -11,6 +11,19 @@ HOLDOUT_FILE="${HOLDOUT_FILE:-$REPO_ROOT/data/processed/wrds_qwen_pipeline/jsonl
 OUTPUT_DIR="${OUTPUT_DIR:-$REPO_ROOT/outputs/wrds_qwen_pipeline/train/$RUN_NAME}"
 LOG_PATH="${LOG_PATH:-$REPO_ROOT/logs/wrds_qwen_pipeline/$RUN_NAME.log}"
 EXIT_CODE_PATH="${EXIT_CODE_PATH:-$OUTPUT_DIR/train.exitcode}"
+MODEL_ID="${MODEL_ID:-Qwen/Qwen3.6-27B}"
+EPOCHS="${EPOCHS:-1.0}"
+LR="${LR:-0.0002}"
+PER_DEVICE_TRAIN_BATCH_SIZE="${PER_DEVICE_TRAIN_BATCH_SIZE:-4}"
+GRADIENT_ACCUMULATION_STEPS="${GRADIENT_ACCUMULATION_STEPS:-4}"
+LORA_DROPOUT="${LORA_DROPOUT:-0.0}"
+EVAL_STEPS="${EVAL_STEPS:-500}"
+SAVE_STEPS="${SAVE_STEPS:-500}"
+LOGGING_STEPS="${LOGGING_STEPS:-25}"
+MAX_SEQ_LENGTH="${MAX_SEQ_LENGTH:-1024}"
+GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.9}"
+MAX_TOTAL_EXAMPLES="${MAX_TOTAL_EXAMPLES:-0}"
+RESUME_FROM_CHECKPOINT="${RESUME_FROM_CHECKPOINT:-}"
 
 mkdir -p "$(dirname "$LOG_PATH")" "$OUTPUT_DIR"
 rm -f "$EXIT_CODE_PATH"
@@ -25,25 +38,32 @@ export PYTHONUNBUFFERED=1
   echo "[$(date --iso-8601=seconds)] starting run $RUN_NAME"
   echo "[$(date --iso-8601=seconds)] output_dir=$OUTPUT_DIR"
   echo "[$(date --iso-8601=seconds)] log_path=$LOG_PATH"
+  echo "[$(date --iso-8601=seconds)] eval_steps=$EVAL_STEPS save_steps=$SAVE_STEPS logging_steps=$LOGGING_STEPS"
   set +e
-  "$REPO_ROOT/.venv/bin/python" -u "$REPO_ROOT/training/train_finance_lora_unsloth.py" \
-    --model-id Qwen/Qwen3.6-27B \
-    --train-file "$TRAIN_FILE" \
-    --eval-file "$TRAIN_EVAL_FILE" \
-    --test-file "$HOLDOUT_FILE" \
-    --output-dir "$OUTPUT_DIR" \
-    --epochs 1.0 \
-    --lr 0.0002 \
-    --per-device-train-batch-size 4 \
-    --gradient-accumulation-steps 4 \
-    --lora-dropout 0.0 \
-    --eval-steps 500 \
-    --save-steps 500 \
-    --logging-steps 25 \
-    --max-seq-length 1024 \
-    --gpu-memory-utilization 0.9 \
-    --max-total-examples 0 \
+  cmd=(
+    "$REPO_ROOT/.venv/bin/python" -u "$REPO_ROOT/training/train_finance_lora_unsloth.py"
+    --model-id "$MODEL_ID"
+    --train-file "$TRAIN_FILE"
+    --eval-file "$TRAIN_EVAL_FILE"
+    --test-file "$HOLDOUT_FILE"
+    --output-dir "$OUTPUT_DIR"
+    --epochs "$EPOCHS"
+    --lr "$LR"
+    --per-device-train-batch-size "$PER_DEVICE_TRAIN_BATCH_SIZE"
+    --gradient-accumulation-steps "$GRADIENT_ACCUMULATION_STEPS"
+    --lora-dropout "$LORA_DROPOUT"
+    --eval-steps "$EVAL_STEPS"
+    --save-steps "$SAVE_STEPS"
+    --logging-steps "$LOGGING_STEPS"
+    --max-seq-length "$MAX_SEQ_LENGTH"
+    --gpu-memory-utilization "$GPU_MEMORY_UTILIZATION"
+    --max-total-examples "$MAX_TOTAL_EXAMPLES"
     --local-files-only
+  )
+  if [[ -n "$RESUME_FROM_CHECKPOINT" ]]; then
+    cmd+=(--resume-from-checkpoint "$RESUME_FROM_CHECKPOINT")
+  fi
+  "${cmd[@]}"
   exit_code=$?
   set -e
   echo "$exit_code" >"$EXIT_CODE_PATH"

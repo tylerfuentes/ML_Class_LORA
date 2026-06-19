@@ -74,6 +74,7 @@ def main():
     parser.add_argument("--resume-from-checkpoint")
     parser.add_argument("--allow-overwrite-output-dir", action="store_true", default=False)
     parser.add_argument("--max-total-examples", type=int, default=0)
+    parser.add_argument("--max-steps-override", type=int, default=0)
     args = parser.parse_args()
 
     output_dir = ensure_safe_output_dir(
@@ -119,6 +120,8 @@ def main():
 
     effective_batch_size = args.per_device_train_batch_size * args.gradient_accumulation_steps
     max_steps = max(1, math.ceil(len(train_dataset) * args.epochs / effective_batch_size))
+    if args.max_steps_override:
+        max_steps = args.max_steps_override
 
     training_args = TrainingArguments(
         output_dir=str(output_dir),

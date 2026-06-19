@@ -52,7 +52,14 @@ def parse_args() -> argparse.Namespace:
         help="Directory for future label-alignment reports.",
     )
     parser.add_argument("--sample-rows", type=int, default=3)
-    return parser.parse_args()
+    args, extras = parser.parse_known_args()
+    window_like = [token for token in extras if ":" in token]
+    unexpected = [token for token in extras if token not in window_like]
+    if unexpected:
+        parser.error(f"unrecognized arguments: {' '.join(unexpected)}")
+    if window_like:
+        args.windows.extend(window_like)
+    return args
 
 
 def validate_event_windows_file(path: Path, label_columns: list[str], windows: list[str], sample_rows: int) -> tuple[bool, list[str]]:
