@@ -1,5 +1,106 @@
 # Evaluation Findings
 
+## June 19, 2026 WRDS 500k Unsloth run, 71k-step checkpoint
+
+Background: the WRDS-500k Unsloth training run
+(`qwen36-27b-wrds-500k-unsloth-gb10-rerun-20260616T2330Z`) was interrupted
+(`KeyboardInterrupt`, exit code 130) at global_step=4500, with
+per_device_train_batch_size=4 and gradient_accumulation_steps=4 (effective
+batch 16). 4500 x 16 = ~72,000 examples seen, hence "the 71k checkpoint" in
+conversation. max_steps for the full run is 32750 (epoch 0.137 of 1.0).
+
+This checkpoint was treated as a real artifact, not disposable progress,
+per the promotion policy in
+[colab-a100-storage-policy.md](/home/nathanaelguitar/ML_Class_LORA/docs/colab-a100-storage-policy.md#promotion-to-hugging-face-decision-rule).
+
+Backup (done):
+
+- full Trainer checkpoint (adapter weights, optimizer/scheduler/RNG state,
+  trainer_state.json, training config, loss history, exact resume/eval
+  commands) copied to
+  `Drive/MyDrive/ML_Class_LORA/local_backup/qwen36-27b-wrds-500k-unsloth-gb10-rerun-20260616T2330Z_checkpoint-4500/`
+- separately copied to the resume-expected path
+  `Drive/MyDrive/ML_Class_LORA/checkpoints/qwen36-27b-wrds-500k-unsloth-gb10-rerun-20260616T2330Z/checkpoint-4500/`
+  so Colab `--resume-latest` can pick it up directly
+- entire local `outputs/` tree (all prior adapters/checkpoints, 9.3GB) also
+  mirrored to `Drive/MyDrive/ML_Class_LORA/local_backup/outputs/` as a
+  general safety net
+
+Reload/generation verification (done):
+
+- adapter reloads with no errors
+- non-thinking mode generation is coherent and on-task, e.g. real structured
+  JSON analysis of analyst-revision events with plausible
+  classification/confidence/reasoning fields
+- thinking-mode generation looked like a total failure
+  (`accuracy: 0.0`, `parse_failure_rate: 1.0`) on a first pass, but this was
+  a **generation-config artifact, not a model defect**: the default
+  `--max-new-tokens 80` truncates thinking-mode output mid-reasoning, before
+  it ever reaches an answer. Non-thinking mode at the same 80-token budget
+  still got 4/5 examples to parse. This is the same failure mode already
+  documented below in the May 16 entry for the `1k` adapter — always rerun
+  with `--max-new-tokens 256` or higher before concluding thinking-mode
+  regressed.
+
+3-way comparison vs. `1k` and `10k` adapters (done): ran `checkpoint-4500`,
+`outputs/qwen36-27b-ibes-baseline` (1k), and
+`outputs/qwen36-27b-ibes-10k-controlled/checkpoint-500` (10k) all against
+the same WRDS holdout
+(`data/processed/wrds_qwen_pipeline/jsonl/test.jsonl`), 50 examples,
+`--max-new-tokens 256`, `--qwen-thinking-mode both`, via
+`scripts/run_71k_comparison.sh`. Full results:
+`outputs/evals/wrds_holdout_comparison/{checkpoint-4500-71k,ibes-baseline-1k,ibes-10k-controlled}/eval_summary.md`.
+
+**Accuracy/macro_f1 read as `0.0000` across base and all three adapters —
+this is a metric/label mismatch, not a real 0% accuracy.** The generic
+holdout scorer compares gold `direction_label` against a fixed 3-class
+sentiment label set (`compute_classification_metrics(..., "target_label",
+SENTIMENT3_LABELS)`), but these adapters emit domain-specific labels (e.g.
+`"contrarian"`, `"positive"`, `"negative"`) that don't map onto that fixed
+vocabulary. The comparison is structurally broken for this benchmark name,
+identically for every model including base — do not read `accuracy: 0.0`
+here as a quality signal in either direction. A real fix needs a
+WRDS-schema-aware label extractor before accuracy/F1 mean anything on this
+holdout. Until then, the only meaningful signal is `parse_failure_rate`
+(which drives the script's own `verdict()` since accuracy/F1 deltas are
+always 0 here):
+
+| adapter | mode | parse_failure_rate (base -> adapter) | verdict |
+|---|---|---|---|
+| 71k (checkpoint-4500) | nonthinking | 0.04 -> 0.04 | inconclusive (no degradation) |
+| 71k (checkpoint-4500) | thinking | 0.28 -> 0.28 | inconclusive (no degradation) |
+| 1k (ibes-baseline) | nonthinking | 0.04 -> 0.00 | inconclusive (slightly better) |
+| 1k (ibes-baseline) | thinking | 0.28 -> 0.86 | **regressed** |
+| 10k (ibes-10k-controlled) | nonthinking | 0.04 -> 0.64 | **regressed** (64% truncated output too) |
+| 10k (ibes-10k-controlled) | thinking | 0.28 -> 0.14 | inconclusive (better) |
+
+Interpretation:
+
+- the `71k` WRDS-native adapter is the only one of the three that shows
+  **no parse/format regression in either mode** on the WRDS task — expected,
+  since it's the only one actually trained on this task's schema
+- the `1k` adapter (trained on a narrower IBES-baseline schema) breaks down
+  badly in thinking mode on this out-of-domain task (86% parse failure)
+- the `10k` adapter breaks down badly in non-thinking mode on this task
+  (64% parse failure, 64% truncated) — notably worse than its own strong
+  in-domain non-thinking performance documented below, consistent with the
+  general theme in this doc that narrow adapters don't transfer cleanly
+  outside their training schema
+- this is a real, qualitatively-confirmed positive signal for the 71k
+  checkpoint (it doesn't break format-following on its target task, unlike
+  the others forced outside their domain) but it is **not** a verified
+  accuracy win — that requires the label-extraction fix above before any
+  promotion decision should claim a quality improvement, not just a
+  format-stability one
+
+Status: **not promoted to Hugging Face.** The 71k checkpoint stays archived
+in Drive (`local_backup/` and the resume-ready
+`checkpoints/qwen36-27b-wrds-500k-unsloth-gb10-rerun-20260616T2330Z/`
+paths). Next step before any promotion decision: fix the WRDS label
+extractor in `eval/evaluate_base_vs_adapter.py` (or add a proper
+`--benchmark` mapping for this task) and rerun this same comparison to get
+a real accuracy/F1 read, not just a parse-stability read.
+
 ## May 16, 2026 WRDS holdout result
 
 Run:
@@ -233,9 +334,8 @@ Goal:
 Training:
 
 - the `baseline_10k` split was materialized under `data/processed/ibes_lora_baseline/jsonl/baseline_10k`
-- a controlled QLoRA run was launched with the verified HF/PEFT/bitsandbytes path against `Qwen/Qwen3.6-27B`
-- the full epoch was intentionally not pushed to completion because validation at `checkpoint-500` had already improved over the 1k run while later full-holdout evaluation was the real gating signal
-- the 10k adapter evaluated below is `outputs/qwen36-27b-ibes-10k-controlled/checkpoint-500`
+- a controlled QLoRA run completed with the verified HF/PEFT/bitsandbytes path against `Qwen/Qwen3.6-27B`
+- the evaluation artifact used for the 10k-vs-1k comparison is `outputs/qwen36-27b-ibes-10k-controlled/checkpoint-500`
 
 Checkpoint note:
 
@@ -259,7 +359,7 @@ python eval/evaluate_base_vs_adapter.py \
   --local-files-only
 ```
 
-Artifacts:
+Artifacts for the evaluated 10k adapter:
 
 - summary: `outputs/evals/qwen36-27b-ibes-10k-holdout/eval_summary.md`
 - metrics: `outputs/evals/qwen36-27b-ibes-10k-holdout/metrics.json`
@@ -380,11 +480,20 @@ Representative 10k regressions versus 1k:
 - `tfns-1537`: gold `neutral`, 10k predicted `positive`, 1k predicted `neutral`
 - `nwgi-624`: gold `neutral`, 10k predicted `positive`, 1k predicted `neutral`
 
-Pattern in the regressions:
+Pattern in the 10k-versus-1k differences:
 
-- the 10k adapter remained strong, but it became more willing to over-call weakly positive/transactional public headlines as `positive`
+- the 10k adapter remained strong, but it became more willing to over-call weakly positive or transactional public headlines as `positive`
 - this shows up most clearly in `fpb` and `tfns`
 - `nwgi` was the only public task with a small 10k-over-1k improvement
+- the right interpretation is not “10k failed”; it is that pure IBES scaling is saturating the in-domain task and making the adapter more task-specialized
+
+## Model selection
+
+| Use case | Best current model | Why |
+| --- | --- | --- |
+| Structured IBES JSON classification | `10k` adapter | best exact JSON match and magnitude-bucket fidelity while preserving perfect holdout direction accuracy |
+| Public finance benchmark generalization | `1k` adapter | better current results on `fiqa`, `fpb`, and `tfns` |
+| Default for the next research stage | `1k` adapter unless the task is pure IBES formatting | better balance between structured-finance competence and broader public-task generalization |
 
 ## Controlled 10k conclusion
 
@@ -397,8 +506,9 @@ Did scaling improve the structured IBES task?
 Did scaling improve public finance benchmark generalization?
 
 - mostly no
-- relative to the 1k adapter, the 10k checkpoint regressed on `fiqa`, `fpb`, and `tfns`
+- relative to the 1k adapter, the 10k adapter regressed on `fiqa`, `fpb`, and `tfns`
 - it improved only `nwgi`, and only by a small amount
+- the better framing is that the 10k adapter became narrower and more IBES-specialized, not that the overall experiment failed
 
 Did scaling create regressions?
 
@@ -410,15 +520,55 @@ Should the next scale step be 50k?
 
 - not yet
 - the evidence does not justify a larger pure-IBES scaling push right now
-- the 10k checkpoint already shows diminishing returns in-domain and mixed-to-worse public generalization
+- the 10k adapter already shows diminishing returns in-domain and mixed-to-worse public generalization
+- preserve both adapters rather than replacing one with the other
 - the better next milestone is to stop scaling for the moment and shift effort toward the market-reaction layer once CRSP/link data is available
 
 Recommended next step:
 
 - do not start `50k` training yet
 - keep the current non-thinking structured IBES adapter path
+- preserve the `1k` adapter as the better general-finance adapter
+- preserve the `10k` adapter as the better narrow IBES structured-output specialist
 - prioritize CRSP daily returns plus the CRSP/Compustat link table so we can test whether these event labels correlate with realized market reactions
 - optionally revisit `50k` later only if market-reaction work needs a better event-labeler and new evidence shows the current label quality is the bottleneck
+
+## Next milestone: market-reaction measurement
+
+The next milestone is not bigger IBES training. The next milestone is measuring whether the event labels matter for realized market reactions.
+
+Required data:
+
+- CRSP daily returns
+  - needed to compute event-window returns such as `t+0 to t+1`, `t+0 to t+3`, and `t+0 to t+5`
+- CRSP/Compustat link table
+  - needed for reliable identifier joins from IBES entities into returns data
+- market benchmark returns, if available
+  - needed for market-adjusted or abnormal return calculations
+
+Once returns/link data exists, build an event-window reaction dataset and test:
+
+- whether raw IBES labels correlate with same-window or future returns
+- whether `1k` adapter outputs correlate with same-window or future returns
+- whether `10k` adapter outputs correlate with same-window or future returns
+- whether exact structured output fidelity actually matters for downstream return prediction targets
+
+Guardrails:
+
+- do not claim alpha from classification metrics alone
+- do not claim trading readiness from these adapters
+- do not start `50k` until market-reaction evaluation shows which kinds of event examples actually matter
+
+## Next training diagnosis
+
+- this is parked work, not the active milestone
+- recommended next experiment: `mixed finance 10k`
+- problem addressed: The public regressions are concentrated in neutral-to-positive overcalls, which is more consistent with overspecialization than with missing capacity. A mixed dataset directly targets retention of general finance sentiment boundaries while preserving IBES structure.
+- metric target: FIQA/FPB/TFNS macro F1 should recover toward the 1k adapter while keeping IBES exact JSON near the 10k adapter.
+- main risk: Adding public examples could slightly reduce narrow IBES formatting gains if the mix is too aggressive.
+- evaluation plan: Compare the new adapter against base Qwen, the 1k adapter, and the 10k adapter on IBES holdout, FIQA, FPB, TFNS, and NWGI using accuracy, macro F1, parse failure, exact JSON, magnitude bucket accuracy, and confusion matrices.
+- why this is better than `50k` pure IBES: A 50k pure-IBES run would increase the same specialization pressure without first testing whether diversity or mixed supervision solves the actual problem.
+- do not start this until the market-reaction data layer exists and we know whether better event labeling is the real bottleneck
 
 ## Classmate TODO
 

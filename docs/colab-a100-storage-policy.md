@@ -101,6 +101,44 @@ The active training and eval helpers for Colab are:
 - [scripts/colab/push_final_adapter.py](/home/nathanaelguitar/ML_Class_LORA/scripts/colab/push_final_adapter.py)
 - [scripts/colab/verify_runtime.py](/home/nathanaelguitar/ML_Class_LORA/scripts/colab/verify_runtime.py)
 
+## Promotion to Hugging Face: decision rule
+
+Hugging Face is the last step, not a parking spot for in-progress work.
+Follow this order for every candidate adapter/checkpoint, including ones
+produced on Colab:
+
+1. **Back it up to Drive first.** Copy the checkpoint (adapter weights +
+   `trainer_state.json` + optimizer/scheduler/RNG state if you may resume
+   it) plus its training config, loss history, and exact resume/eval
+   commands into a self-contained package under
+   `Drive/MyDrive/ML_Class_LORA/local_backup/<run_name>_<checkpoint>/`.
+   Do this before anything else touches the run — a crashed or interrupted
+   training process does not mean the checkpoint is disposable.
+2. **Verify it, don't assume it.** Reload the adapter and confirm:
+   - it loads without error
+   - it generates coherent, on-task output on a handful of examples
+     (`eval/evaluate_base_vs_adapter.py` with a small `--max-examples`)
+3. **Compare it against the existing reference adapters** before forming an
+   opinion about quality — run the same holdout file, same
+   `--max-new-tokens` (256+, not the 80 default — see
+   [eval-findings.md](/home/nathanaelguitar/ML_Class_LORA/docs/eval-findings.md)
+   for why 80 silently truncates thinking-mode output and looks like a
+   failure when it is not), same `--max-examples`, against:
+   - the prior `1k` adapter (`outputs/qwen36-27b-ibes-baseline`)
+   - the prior `10k` adapter (`outputs/qwen36-27b-ibes-10k-controlled/checkpoint-500`)
+   - base Qwen (the script does this automatically)
+4. **Only push to Hugging Face if the comparison supports it**, and only the
+   one selected adapter's final files (`adapter_model.safetensors`,
+   `adapter_config.json`, tokenizer metadata, a short README) via
+   `scripts/colab/push_final_adapter.py --enable-upload`. Never push full
+   checkpoint history, optimizer state, or every candidate run.
+5. **If it does not evaluate well, leave it archived in Drive.** Do not
+   delete it and do not push it. A losing candidate is still useful history.
+
+See [eval-findings.md](/home/nathanaelguitar/ML_Class_LORA/docs/eval-findings.md)
+for worked examples of this comparison methodology and current adapter
+standings.
+
 ## Resume policy
 
 When a Colab runtime disconnects:
