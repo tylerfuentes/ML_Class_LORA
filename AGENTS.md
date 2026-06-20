@@ -140,13 +140,16 @@ Current project status:
 - a WRDS-500k Unsloth run reached global_step=4500 (~71k examples seen,
   "the 71k checkpoint") before being interrupted; it is backed up to Drive,
   reload-verified, and compared against the `1k`/`10k` adapters as of
-  2026-06-19 — see `docs/eval-findings.md`. It is the only one of the three
-  with no format/parse regression on the WRDS task, but accuracy/F1 are not
-  yet measurable on this holdout (label-extractor mismatch, documented in
-  eval-findings.md) — **not promoted to Hugging Face**, stays archived in
-  Drive until that metric is fixed and a real quality read exists
-- do not push any checkpoint to Hugging Face until accuracy/F1 are actually
-  measurable and a promotion decision is explicitly made (see
+  2026-06-19 — see `docs/eval-findings.md`. After fixing two real bugs (a
+  label-key mismatch and a silently-no-op adapter load that made every
+  earlier "adapter vs base" comparison actually compare base against
+  itself), the real result on a 50-example WRDS holdout: 71k adapter scores
+  100% accuracy non-thinking vs. base 56%, beating both the `1k` (88%) and
+  `10k` (36%, regressed) adapters — a strong early signal, but only 13.7%
+  of one epoch and only 50 examples, so **not yet promoted to Hugging
+  Face**; stays archived in Drive pending more training and a larger eval
+- do not push any checkpoint to Hugging Face until a larger evaluation
+  sample confirms this and a promotion decision is explicitly made (see
   `colab-a100-storage-policy.md`)
 
 ## Market-reaction flow

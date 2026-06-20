@@ -42,7 +42,7 @@ Reload/generation verification (done):
   with `--max-new-tokens 256` or higher before concluding thinking-mode
   regressed.
 
-3-way comparison vs. `1k` and `10k` adapters (done): ran `checkpoint-4500`,
+3-way comparison vs. `1k` and `10k` adapters: ran `checkpoint-4500`,
 `outputs/qwen36-27b-ibes-baseline` (1k), and
 `outputs/qwen36-27b-ibes-10k-controlled/checkpoint-500` (10k) all against
 the same WRDS holdout
@@ -51,55 +51,63 @@ the same WRDS holdout
 `scripts/run_71k_comparison.sh`. Full results:
 `outputs/evals/wrds_holdout_comparison/{checkpoint-4500-71k,ibes-baseline-1k,ibes-10k-controlled}/eval_summary.md`.
 
-**Accuracy/macro_f1 read as `0.0000` across base and all three adapters —
-this is a metric/label mismatch, not a real 0% accuracy.** The generic
-holdout scorer compares gold `direction_label` against a fixed 3-class
-sentiment label set (`compute_classification_metrics(..., "target_label",
-SENTIMENT3_LABELS)`), but these adapters emit domain-specific labels (e.g.
-`"contrarian"`, `"positive"`, `"negative"`) that don't map onto that fixed
-vocabulary. The comparison is structurally broken for this benchmark name,
-identically for every model including base — do not read `accuracy: 0.0`
-here as a quality signal in either direction. A real fix needs a
-WRDS-schema-aware label extractor before accuracy/F1 mean anything on this
-holdout. Until then, the only meaningful signal is `parse_failure_rate`
-(which drives the script's own `verdict()` since accuracy/F1 deltas are
-always 0 here):
+**First pass of this comparison was invalid for two compounding reasons,
+both now fixed:**
 
-| adapter | mode | parse_failure_rate (base -> adapter) | verdict |
+1. Accuracy/macro_f1 read as `0.0000` across base and all three adapters.
+   Root cause: the gold WRDS schema uses `"direction"` as its JSON key,
+   while the scorer (written for the older IBES-baseline schema) only
+   looked for `"direction_label"` — so gold labels were always `None` and
+   accuracy was structurally `0.0` for everyone, always. Fixed in
+   `eval/evaluate_base_vs_adapter.py` (commit `f73a7df`): accepts
+   `"direction"` as an alias on both the gold and predicted sides.
+2. Separately, and more seriously: `checkpoint-4500`'s "adapter" and "base"
+   generations were **byte-for-byte identical** in every run up to this
+   point. `PeftModel.from_pretrained` was loading the Unsloth-trained
+   adapter as a no-op — its saved keys carry an extra `"language_model."`
+   path segment and lack PEFT's `".default"` adapter-name suffix, so every
+   one of its 512 LoRA tensors was reported as "missing" and silently left
+   at default (zero-effect) init. Fixed via `fix_adapter_key_drift()` in
+   `eval/evaluate_base_vs_adapter.py` (commit `be0ace0`); the same root
+   cause is guarded against going forward by `training/safety.py`'s
+   resume-fingerprint check (commit `53f262f`), which would now hard-fail
+   *before* training rather than silently resuming a reset adapter.
+
+**Real results (non-thinking mode, the reliable mode per the May 16 entry
+below):**
+
+| model | accuracy | macro_f1 | parse_failure_rate |
 |---|---|---|---|
-| 71k (checkpoint-4500) | nonthinking | 0.04 -> 0.04 | inconclusive (no degradation) |
-| 71k (checkpoint-4500) | thinking | 0.28 -> 0.28 | inconclusive (no degradation) |
-| 1k (ibes-baseline) | nonthinking | 0.04 -> 0.00 | inconclusive (slightly better) |
-| 1k (ibes-baseline) | thinking | 0.28 -> 0.86 | **regressed** |
-| 10k (ibes-10k-controlled) | nonthinking | 0.04 -> 0.64 | **regressed** (64% truncated output too) |
-| 10k (ibes-10k-controlled) | thinking | 0.28 -> 0.14 | inconclusive (better) |
+| base Qwen | 0.56 | 0.4245 | 0.04 |
+| **71k (checkpoint-4500)** | **1.00** | **1.00** | **0.00** |
+| 1k (ibes-baseline) | 0.88 | 0.9293 | 0.00 |
+| 10k (ibes-10k-controlled) | 0.36 | 0.5139 | 0.64 (regressed) |
 
-Interpretation:
+The 71k WRDS-native checkpoint scores **perfectly on this 50-example
+holdout** — beating base by +44 points of accuracy, and beating both
+reference adapters. The 1k adapter also generalizes surprisingly well
+out-of-domain (88%); the 10k adapter regresses badly (64% parse failure),
+consistent with the general "narrow adapters don't transfer cleanly
+outside their training schema" theme in this doc.
 
-- the `71k` WRDS-native adapter is the only one of the three that shows
-  **no parse/format regression in either mode** on the WRDS task — expected,
-  since it's the only one actually trained on this task's schema
-- the `1k` adapter (trained on a narrower IBES-baseline schema) breaks down
-  badly in thinking mode on this out-of-domain task (86% parse failure)
-- the `10k` adapter breaks down badly in non-thinking mode on this task
-  (64% parse failure, 64% truncated) — notably worse than its own strong
-  in-domain non-thinking performance documented below, consistent with the
-  general theme in this doc that narrow adapters don't transfer cleanly
-  outside their training schema
-- this is a real, qualitatively-confirmed positive signal for the 71k
-  checkpoint (it doesn't break format-following on its target task, unlike
-  the others forced outside their domain) but it is **not** a verified
-  accuracy win — that requires the label-extraction fix above before any
-  promotion decision should claim a quality improvement, not just a
-  format-stability one
+Thinking mode regressed for every adapter (71k: 0.50 -> 0.00, 1k: 0.50 ->
+0.14, 10k: 0.50 -> 0.38) — consistent with prior findings that thinking
+mode is broadly unreliable for these adapters, not a 71k-specific issue.
 
-Status: **not promoted to Hugging Face.** The 71k checkpoint stays archived
-in Drive (`local_backup/` and the resume-ready
+Caveats before treating this as final:
+
+- only 50 examples — enough to be a strong signal, not enough to be
+  publication-grade
+- the run that produced this checkpoint was interrupted at 13.7% of one
+  epoch (step 4500 of 32750) — these are early-training numbers
+- training has not yet resumed past this point
+
+Status: **not yet promoted to Hugging Face**, pending more training
+progress and a larger eval sample, but this is the first real evidence the
+71k checkpoint is genuinely working, not just format-stable. The
+checkpoint stays archived in Drive (`local_backup/` and the resume-ready
 `checkpoints/qwen36-27b-wrds-500k-unsloth-gb10-rerun-20260616T2330Z/`
-paths). Next step before any promotion decision: fix the WRDS label
-extractor in `eval/evaluate_base_vs_adapter.py` (or add a proper
-`--benchmark` mapping for this task) and rerun this same comparison to get
-a real accuracy/F1 read, not just a parse-stability read.
+paths) and is wired up for `--resume-latest` on Colab.
 
 ## May 16, 2026 WRDS holdout result
 
