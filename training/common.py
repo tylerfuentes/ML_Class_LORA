@@ -90,7 +90,7 @@ def build_tokenized_dataset(examples: Iterable[dict], max_seq_length: int, token
 
     def tokenize(batch):
         return tokenizer(
-            batch["text"],
+            text=batch["text"],
             truncation=True,
             padding=False,
             max_length=max_seq_length,
