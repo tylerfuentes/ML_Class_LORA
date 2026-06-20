@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
 from pathlib import Path
+
+import torch
 
 
 ADAPTER_WEIGHT_FILENAMES = (
@@ -89,6 +92,80 @@ def ensure_safe_output_dir(
         "Refusing to use output_dir because adapter artifacts already exist in "
         f"{output_path} ({sample}). Pass --allow-overwrite-output-dir to override."
     )
+
+
+FINGERPRINT_FILENAME = "fingerprint.json"
+
+
+def compute_lora_fingerprint(state_dict: dict) -> dict[str, float]:
+    """Deterministic, load-path-independent summary of LoRA weight magnitudes.
+
+    Records the absolute-value sum (float64) of a fixed sample of LoRA
+    tensors by their exact saved key names. Comparing this after a
+    checkpoint reload catches the case where weights were silently left at
+    their default/zero init due to a key-name mismatch (transformers/Unsloth
+    module-path drift, a missing PEFT adapter-name suffix, an environment
+    upgrade between save and resume, etc.) even when the loader raised no
+    error or warning. This is exactly the failure mode found in
+    eval/evaluate_base_vs_adapter.py against checkpoint-4500 of the
+    qwen36-27b-wrds-500k-unsloth-gb10-rerun-20260616T2330Z run: PeftModel.from_pretrained
+    reported "missing adapter keys" but did not abort, so "adapter" and
+    "base" generations were silently identical.
+    """
+    lora_keys = sorted(k for k in state_dict if "lora_A" in k or "lora_B" in k)
+    if not lora_keys:
+        return {}
+    sample = lora_keys[:3] + lora_keys[-3:] if len(lora_keys) > 6 else lora_keys
+    return {
+        key: float(state_dict[key].detach().to(torch.float64).abs().sum().item())
+        for key in sample
+    }
+
+
+def write_fingerprint(checkpoint_dir: str | Path, state_dict: dict) -> Path | None:
+    fingerprint = compute_lora_fingerprint(state_dict)
+    if not fingerprint:
+        return None
+    path = Path(checkpoint_dir) / FINGERPRINT_FILENAME
+    path.write_text(json.dumps(fingerprint, indent=2) + "\n")
+    return path
+
+
+def verify_resume_fingerprint(checkpoint_dir: str | Path, state_dict: dict, rel_tol: float = 1e-3) -> None:
+    """Raise before training proceeds if the resumed model's LoRA weights do
+    not actually match the checkpoint being resumed from. Silently does
+    nothing if the checkpoint predates fingerprinting (no fingerprint.json).
+    """
+    path = Path(checkpoint_dir) / FINGERPRINT_FILENAME
+    if not path.is_file():
+        return
+    expected: dict[str, float] = json.loads(path.read_text())
+
+    missing = [key for key in expected if key not in state_dict]
+    if missing:
+        raise RuntimeError(
+            "Resume fingerprint check failed: "
+            f"{len(missing)} expected LoRA key(s) are absent from the resumed model "
+            f"(e.g. {missing[0]}). The checkpoint's saved keys do not match this "
+            "environment's model structure - resuming would silently restart the "
+            "adapter from scratch instead of continuing it. Aborting before training "
+            "proceeds."
+        )
+
+    mismatched: list[tuple[str, float, float]] = []
+    for key, expected_value in expected.items():
+        live_value = float(state_dict[key].detach().to(torch.float64).abs().sum().item())
+        if abs(live_value - expected_value) > rel_tol * max(abs(expected_value), 1e-9):
+            mismatched.append((key, expected_value, live_value))
+    if mismatched:
+        key, expected_value, live_value = mismatched[0]
+        raise RuntimeError(
+            "Resume fingerprint check failed: resumed LoRA weights do not match the "
+            f"saved checkpoint for {len(mismatched)} sampled tensor(s) (e.g. {key}: "
+            f"expected abs-sum {expected_value:.6f}, got {live_value:.6f}). The "
+            "adapter was likely loaded as a fresh/default-init LoRA instead of your "
+            "trained weights. Aborting before training proceeds."
+        )
 
 
 def training_target_summary(

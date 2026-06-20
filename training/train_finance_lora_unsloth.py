@@ -7,7 +7,7 @@ from pathlib import Path
 
 import torch
 from unsloth import FastLanguageModel
-from transformers import DataCollatorForLanguageModeling, Trainer, TrainingArguments
+from transformers import DataCollatorForLanguageModeling, Trainer, TrainerCallback, TrainingArguments
 
 from common import (
     LORA_TARGET_MODULES,
@@ -15,7 +15,40 @@ from common import (
     load_jsonl_examples,
     write_json,
 )
-from safety import ensure_safe_output_dir, training_target_summary, validate_resume_checkpoint
+from safety import (
+    ensure_safe_output_dir,
+    training_target_summary,
+    validate_resume_checkpoint,
+    verify_resume_fingerprint,
+    write_fingerprint,
+)
+
+
+class FingerprintCallback(TrainerCallback):
+    """Verifies a resumed adapter's weights actually match the checkpoint
+    being resumed from (catches silent key-name-mismatch no-ops before any
+    training proceeds), and records a fingerprint into every checkpoint this
+    run saves so future resumes of *those* checkpoints can be verified too.
+    """
+
+    def __init__(self, resume_checkpoint):
+        self.resume_checkpoint = resume_checkpoint
+        self._verified = False
+
+    def on_train_begin(self, args, state, control, **kwargs):
+        model = kwargs.get("model")
+        if self.resume_checkpoint is not None and not self._verified and model is not None:
+            verify_resume_fingerprint(self.resume_checkpoint, model.state_dict())
+            self._verified = True
+            print(f"[fingerprint] resume verified against {self.resume_checkpoint}")
+
+    def on_save(self, args, state, control, **kwargs):
+        model = kwargs.get("model")
+        if model is None:
+            return
+        checkpoint_dir = Path(args.output_dir) / f"checkpoint-{state.global_step}"
+        if checkpoint_dir.is_dir():
+            write_fingerprint(checkpoint_dir, model.state_dict())
 
 
 def make_model_and_tokenizer(args):
@@ -148,6 +181,7 @@ def main():
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         data_collator=collator,
+        callbacks=[FingerprintCallback(resume_checkpoint)],
     )
 
     start = datetime.now(UTC).isoformat()
