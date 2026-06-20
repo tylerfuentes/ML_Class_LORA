@@ -22,14 +22,14 @@ model:
   local_files_only: false
 
 training:
-  run_name: "colab-a100-qwen36-27b-unsloth"
+  run_name: "qwen36-27b-wrds-500k-unsloth-gb10-rerun-20260616T2330Z"
   epochs: 1.0
   learning_rate: 0.0002
   per_device_train_batch_size: 4
   gradient_accumulation_steps: 4
-  eval_steps: 5000
-  save_steps: 5000
-  logging_steps: 100
+  eval_steps: 500
+  save_steps: 500
+  logging_steps: 25
   max_seq_length: 1024
   gpu_memory_utilization: 0.95
   lora_r: 16
