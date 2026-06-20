@@ -113,6 +113,58 @@ def make_tokenizer(model_id: str, local_files_only: bool):
     return tokenizer
 
 
+def fix_adapter_key_drift(model: Any, adapter_path: str) -> None:
+    """Repair adapter checkpoints whose saved state-dict keys don't match the
+    currently-loaded model's module names, instead of silently leaving those
+    LoRA weights at their no-op default init.
+
+    Observed cause: a checkpoint trained under Unsloth against
+    Qwen/Qwen3.6-27B saved keys with an extra "language_model." path segment
+    and without PEFT's ".default" adapter-name suffix (e.g.
+    "base_model.model.model.language_model.layers.0.mlp.down_proj.lora_A.weight"
+    instead of "base_model.model.model.layers.0.mlp.down_proj.lora_A.default.weight").
+    PeftModel.from_pretrained treats every one of those as a *missing* key
+    (it warns "Found missing adapter keys...") and leaves the real,
+    zero-initialized LoRA B matrices in place - so the adapter silently has
+    zero effect and "adapter" generations are identical to "base". This
+    repairs that by remapping any saved key that doesn't already match the
+    live model onto the closest live key with the same trailing
+    layer/module/lora_A-or-B identity.
+    """
+    from safetensors.torch import load_file
+
+    adapter_file = Path(adapter_path) / "adapter_model.safetensors"
+    if not adapter_file.exists():
+        return
+
+    raw_state = load_file(str(adapter_file))
+    model_keys = set(model.state_dict().keys())
+
+    remapped: dict[str, torch.Tensor] = {}
+    drifted = 0
+    unmatched: list[str] = []
+    for key, tensor in raw_state.items():
+        if key in model_keys:
+            continue  # already loaded correctly by from_pretrained
+        candidate = key.replace("language_model.", "")
+        if candidate.endswith(".weight") and not candidate.endswith(".default.weight"):
+            candidate = candidate[: -len(".weight")] + ".default.weight"
+        if candidate in model_keys:
+            remapped[candidate] = tensor
+            drifted += 1
+        else:
+            unmatched.append(key)
+
+    if drifted:
+        missing, unexpected = model.load_state_dict(remapped, strict=False)
+        print(
+            f"[fix_adapter_key_drift] remapped {drifted} drifted adapter keys "
+            f"from {adapter_file}; {len(unmatched)} still unmatched"
+        )
+    if unmatched:
+        print(f"[fix_adapter_key_drift] could not remap: {unmatched[:5]}{'...' if len(unmatched) > 5 else ''}")
+
+
 def make_model(model_id: str, local_files_only: bool, adapter_path: str | None):
     load_kwargs: dict[str, Any] = {
         "trust_remote_code": True,
@@ -132,7 +184,11 @@ def make_model(model_id: str, local_files_only: bool, adapter_path: str | None):
     )
 
     base = AutoModelForCausalLM.from_pretrained(model_id, **load_kwargs)
-    model = PeftModel.from_pretrained(base, adapter_path) if adapter_path else base
+    if adapter_path:
+        model = PeftModel.from_pretrained(base, adapter_path)
+        fix_adapter_key_drift(model, adapter_path)
+    else:
+        model = base
     model.eval()
     return model
 
