@@ -143,13 +143,18 @@ def main():
     model, tokenizer = make_model_and_tokenizer(args)
     model.print_trainable_parameters()
 
-    train_dataset = build_tokenized_dataset(train_examples, args.max_seq_length, tokenizer)
+    # FastLanguageModel.from_pretrained returns a Qwen3VLProcessor wrapper for
+    # this VL-capable checkpoint; only its inner .tokenizer implements pad(),
+    # which DataCollatorForLanguageModeling requires.
+    text_tokenizer = tokenizer.tokenizer if hasattr(tokenizer, "tokenizer") else tokenizer
+
+    train_dataset = build_tokenized_dataset(train_examples, args.max_seq_length, text_tokenizer)
     eval_dataset = (
-        build_tokenized_dataset(eval_examples, args.max_seq_length, tokenizer)
+        build_tokenized_dataset(eval_examples, args.max_seq_length, text_tokenizer)
         if eval_examples
         else None
     )
-    collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
+    collator = DataCollatorForLanguageModeling(tokenizer=text_tokenizer, mlm=False)
 
     effective_batch_size = args.per_device_train_batch_size * args.gradient_accumulation_steps
     max_steps = max(1, math.ceil(len(train_dataset) * args.epochs / effective_batch_size))
