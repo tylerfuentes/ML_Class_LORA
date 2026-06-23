@@ -34,6 +34,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--run-name", default="")
     parser.add_argument("--resume-from-checkpoint", default="")
     parser.add_argument("--resume-latest", action="store_true", default=False)
+    parser.add_argument("--max-steps-override", type=int, default=0)
     return parser.parse_args()
 
 
@@ -148,6 +149,8 @@ def main() -> int:
         cmd.append("--disable-qlora")
     if resume_from_checkpoint:
         cmd.extend(["--resume-from-checkpoint", resume_from_checkpoint])
+    if args.max_steps_override:
+        cmd.extend(["--max-steps-override", str(args.max_steps_override)])
 
     print("Running:", " ".join(cmd))
     with log_path.open("a", encoding="utf-8") as handle:
