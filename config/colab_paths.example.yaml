@@ -23,6 +23,8 @@ model:
 
 training:
   run_name: "qwen36-27b-wrds-500k-unsloth-gb10-rerun-20260616T2330Z"
+  resume_latest: true
+  chunk_schedule: [12500, 15500, 18500, 21500, 24500, 27500, 30500, 32750]
   epochs: 1.0
   learning_rate: 0.0002
   per_device_train_batch_size: 4
