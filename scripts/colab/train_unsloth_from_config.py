@@ -38,6 +38,16 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def next_chunk_target(output_dir: Path, chunk_schedule: list[int]) -> int:
+    """Return the next chunk target from schedule based on the latest checkpoint step."""
+    ckpt = latest_checkpoint(output_dir)
+    current_step = int(ckpt.name.split("-")[-1]) if ckpt else 0
+    for target in sorted(chunk_schedule):
+        if target > current_step:
+            return target
+    return sorted(chunk_schedule)[-1]
+
+
 def load_yaml(path: Path) -> dict[str, Any]:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
@@ -96,12 +106,25 @@ def main() -> int:
     log_dir = ensure_dir(outputs_root / "train_logs")
     log_path = log_dir / f"{run_name}.log"
 
+    # resume_latest: CLI flag takes precedence, then config
+    resume_latest = args.resume_latest or training_cfg.get("resume_latest", False)
     resume_from_checkpoint = args.resume_from_checkpoint.strip()
-    if args.resume_latest and not resume_from_checkpoint:
+    if resume_latest and not resume_from_checkpoint:
         checkpoint = latest_checkpoint(output_dir)
         if checkpoint is None:
-            raise FileNotFoundError(f"No checkpoint found under {output_dir} for --resume-latest.")
-        resume_from_checkpoint = str(checkpoint)
+            print("No checkpoint found; starting from scratch.")
+        else:
+            resume_from_checkpoint = str(checkpoint)
+
+    # max_steps_override: CLI flag takes precedence, then chunk_schedule auto-detect, then config value
+    chunk_schedule = training_cfg.get("chunk_schedule", [])
+    if args.max_steps_override:
+        max_steps_override = args.max_steps_override
+    elif chunk_schedule:
+        max_steps_override = next_chunk_target(output_dir, chunk_schedule)
+        print(f"Auto-detected next chunk target: {max_steps_override}")
+    else:
+        max_steps_override = training_cfg.get("max_steps_override", 0)
 
     cmd = [
         sys.executable,
@@ -149,8 +172,8 @@ def main() -> int:
         cmd.append("--disable-qlora")
     if resume_from_checkpoint:
         cmd.extend(["--resume-from-checkpoint", resume_from_checkpoint])
-    if args.max_steps_override:
-        cmd.extend(["--max-steps-override", str(args.max_steps_override)])
+    if max_steps_override:
+        cmd.extend(["--max-steps-override", str(max_steps_override)])
 
     print("Running:", " ".join(cmd))
     with log_path.open("a", encoding="utf-8") as handle:
